@@ -103,7 +103,11 @@ function renderSearchResults(items) {
                 <div style="font-size:0.8rem;color:var(--text-secondary);">${esc(item.series || '')}</div>
             </td>
             <td style="font-size:0.9rem;">${esc(item.cpu_gen || '—')}</td>
+<<<<<<< HEAD
             <td style="font-size:0.9rem;">${esc(item.ram || 'None')} / ${esc(item.storage || 'None')}</td>
+=======
+            <td style="font-size:0.9rem;">${esc(item.ram || 'No RAM')} / ${esc(item.storage || 'No Storage')}</td>
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
             <td>${conditionBadge(item.description)}</td>
             <td style="font-size:0.85rem;color:var(--text-secondary);">${esc(item.warehouse_location || '—')}</td>
             <td>
@@ -114,8 +118,13 @@ function renderSearchResults(items) {
                         data-model="${esc(item.model)}"
                         data-series="${esc(item.series || '')}"
                         data-cpu_gen="${esc(item.cpu_gen || '')}"
+<<<<<<< HEAD
                         data-ram="${esc(item.ram || 'None')}"
                         data-storage="${esc(item.storage || 'None')}"
+=======
+                        data-ram="${esc(item.ram || 'No RAM')}"
+                        data-storage="${esc(item.storage || 'No Storage')}"
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                         data-description="${esc(item.description || '')}">
                     ${inCart ? '+ Add More' : '+ Add to Order'}
                 </button>
@@ -387,9 +396,16 @@ function esc(str) {
 function conditionBadge(desc) {
     if (!desc) return '—';
     let color = 'var(--text-secondary)';
+<<<<<<< HEAD
     if (desc === 'For Parts')    color = 'var(--btn-danger-bg)';
     if (desc === 'Refurbished')  color = 'var(--btn-success-bg)';
     if (desc === 'Untested')     color = '#f39c12';
     return `<span style="background:${color};color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78rem;font-weight:bold;">${esc(desc)}</span>`;
+=======
+    if (desc === 'For Parts')    color = '#ef4444';
+    if (desc === 'Refurbished')  color = 'var(--accent-color)';
+    if (desc === 'Untested')     color = '#f39c12';
+    return `<span style="background:${color};color:#fff;padding:2px 7px;border-radius:4px;font-size:0.75rem;font-weight:800;text-transform:uppercase;">${esc(desc)}</span>`;
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 }
 

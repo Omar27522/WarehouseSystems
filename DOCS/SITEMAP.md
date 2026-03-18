@@ -8,11 +8,20 @@
 │   ├── /css/
 │   │   └── style.css       # Global dark-theme stylesheet
 │   └── /js/
+<<<<<<< HEAD
 │       ├── forms.js        # Logic for new_label/new_customer forms
 │       ├── new_order.js    # Logic for the 4-step ordering cart
 │       ├── labels.js       # CRUD & Filtering for warehouse tracking
 │       ├── rolodex.js      # CRUD for customer list
 │       └── api.js          # Shared fetch helpers (Legacy)
+=======
+│       ├── forms.js        # Logic for new_label/new_customer forms (Intelligent CPU Intake)
+│       ├── new_order.js    # Logic for the 4-step ordering cart
+│       ├── labels.js       # CRUD & Filtering for warehouse tracking
+│       ├── rolodex.js      # CRUD for customer list
+│       ├── actions.js      # Global Technical Action Bridge (Open/Launch/Reprint)
+│       └── print_engine.js # Quantity & Layout Logic for Printer Direct
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 │
 ├── /db/                    # SQLite Database Files
 │   ├── labels.sqlite       # Items & Inventory
@@ -30,6 +39,11 @@
 │   ├── db.php              # PDO Shared Connections
 │   ├── header.php          # Sidebar Nav & HTML Head
 │   ├── footer.php          
+<<<<<<< HEAD
+=======
+│   ├── hardware_form.php   # Unified Intake/Edit Component
+│   ├── schema_guard.php    # Self-Healing Schema Logic
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 │   └── functions.php       # Formatting & Sanitization
 │
 ├── /api/                   # API Endpoints (All return JSON)
@@ -38,6 +52,11 @@
 │   ├── delete_label.php    
 │   ├── get_labels.php      # Search/Filter warehouse
 │   ├── search_item.php     # Quick Locate lookup
+<<<<<<< HEAD
+=======
+│   ├── get_analytics.php   # Dashboard Metrics
+│   ├── check_file_exists.php # Bridge: Verify ODT exists
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 │   ├── add_customer.php    
 │   ├── edit_customer.php   
 │   ├── delete_customer.php 
@@ -50,8 +69,15 @@
 │   └── /orders/
 │
 ├── index.php               # Dashboard (Stats & Search)
+<<<<<<< HEAD
 ├── labels.php              # Warehouse Table View
 ├── new_label.php           # Add Item Form
+=======
+├── analytics.php           # Performance & Sales Reports
+├── labels.php              # Warehouse Table View
+├── new_label.php           # Add Item Form (CPU Intake)
+├── refurbished_view.php    # Technical Refurbishment Form
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 ├── orders.php              # PO List View
 ├── order_view.php          # Detailed PO Card / Item List
 ├── new_order.php           # Shopping Cart View

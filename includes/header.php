@@ -7,11 +7,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>IQA Metal Inventory</title>
+=======
+    <title>TEST ENVIROMENT</title>
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 
     <!-- Global CSS Variables & Layout Rules -->
     <link rel="stylesheet" href="assets/css/style.css">
 
+<<<<<<< HEAD
+=======
+    <!-- Universal Actions Bridge -->
+    <script src="assets/js/actions.js"></script>
+    <script src="assets/js/print_engine.js"></script>
+
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     <!-- Optional: A nice system font hook if desired later. Using system-ui fallbacks in CSS for now -->
 </head>
 <body class="safe-area-bottom">
@@ -88,6 +99,10 @@
         <nav style="flex: 1; overflow-y: auto;">
             <ul class="nav-menu">
                 <li><a href="index.php" class="nav-link" id="nav-dashboard">📊 Dashboard</a></li>
+<<<<<<< HEAD
+=======
+                <li><a href="analytics.php" class="nav-link" id="nav-analytics">📈 Performance</a></li>
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 <br>
 
                 <!-- LABELS / INVENTORY -->

@@ -32,10 +32,31 @@ function check_and_rebuild_schemas($pdo_labels, $pdo_orders, $pdo_rolodex) {
             description TEXT,
             status TEXT DEFAULT 'In Warehouse',
             warehouse_location TEXT,
+<<<<<<< HEAD
+=======
+            serial_number TEXT,
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
             order_id INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
+<<<<<<< HEAD
+=======
+        // 1.5. Automated Migration: Add serial_number if table was already present
+        $stmt_info = $pdo_labels->query("PRAGMA table_info(items)");
+        $columns = $stmt_info->fetchAll(PDO::FETCH_ASSOC);
+        $has_sn = false;
+        foreach ($columns as $col) {
+            if ($col['name'] === 'serial_number') {
+                $has_sn = true;
+                break;
+            }
+        }
+        if (!$has_sn) {
+            $pdo_labels->exec("ALTER TABLE items ADD COLUMN serial_number TEXT");
+        }
+
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         // 2. Check Orders
         $pdo_orders->exec("CREATE TABLE IF NOT EXISTS purchase_orders (
             order_number INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +77,19 @@ function check_and_rebuild_schemas($pdo_labels, $pdo_orders, $pdo_rolodex) {
             unit_price NUMERIC,
             total_price NUMERIC
         )");
+<<<<<<< HEAD
+=======
+        $pdo_orders->exec("CREATE TABLE IF NOT EXISTS sold_history (
+            history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_number INTEGER NOT NULL,
+            item_id INTEGER NOT NULL,
+            serial_number TEXT,
+            customer_id INTEGER NOT NULL,
+            brand_model TEXT,
+            sale_price NUMERIC,
+            sale_date DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 
         // 3. Check Rolodex
         $pdo_rolodex->exec("CREATE TABLE IF NOT EXISTS customers (
