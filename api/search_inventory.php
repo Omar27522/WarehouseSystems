@@ -15,6 +15,7 @@ try {
     $search_term = '%' . $q . '%';
 
     $stmt = $pdo_labels->prepare("
+<<<<<<< HEAD
         SELECT id, brand, model, series, cpu_gen, cpu_details, ram, storage,
                battery, bios_state, description, warehouse_location, status
         FROM items
@@ -25,6 +26,20 @@ try {
             cpu_gen     LIKE :q4 OR
             description LIKE :q5
           )
+=======
+        SELECT id, brand, model, series, serial_number, cpu_gen, cpu_details, ram, storage,
+               battery, bios_state, description, warehouse_location, status
+        FROM items
+        WHERE (
+            brand         LIKE :q1 OR
+            model         LIKE :q2 OR
+            series        LIKE :q3 OR
+            serial_number LIKE :sn OR
+            cpu_gen       LIKE :q4 OR
+            description   LIKE :q5
+          )
+        AND status = 'In Warehouse'
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         ORDER BY id DESC
         LIMIT 50
     ");
@@ -33,6 +48,10 @@ try {
         ':q1' => $search_term,
         ':q2' => $search_term,
         ':q3' => $search_term,
+<<<<<<< HEAD
+=======
+        ':sn' => $search_term,
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         ':q4' => $search_term,
         ':q5' => $search_term,
     ]);

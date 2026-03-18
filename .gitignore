@@ -1,3 +1,8 @@
 .vscode/
 db/
+<<<<<<< HEAD
 exports/
+=======
+exports/
+update.txt
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)

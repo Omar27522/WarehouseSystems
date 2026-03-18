@@ -100,7 +100,11 @@ Because we strictly avoid massive PHP frameworks or Composer bundles, we utilize
 
 ### Hybrid Printing Strategy
 The application utilizes two distinct printing workflows based on document type:
+<<<<<<< HEAD
 - **Browser-Native (Labels)**: `print_label.php` renders hardware labels directly in HTML/CSS. It maps to exact **3" x 1.74"** dimensions via `@page` rules. This provides instant, zero-storage output (no files written to disk) for rapid warehouse use.
+=======
+- **Browser-Native (Labels)**: `print_label.php` renders hardware labels directly in HTML/CSS. It maps to exact **2" x 1"** dimensions via `@page` rules. This provides instant, zero-storage output (no files written to disk) for rapid warehouse use.
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 - **Windows-Native (B2B Orders)**: B2B Purchase Orders are generated as persistent `.ots` files and launched directly in **LibreOffice Calc** via `api/open_windows_file.php`. This allows for native spreadsheet editing and professional printing controls.
 
 ### Technical Implementation:
@@ -148,6 +152,15 @@ On screens smaller than 900px, standard data tables use a CSS transformation:
 2. `display: block` is applied to `<tr>` and `<td>`.
 3. `data-label` attributes on `<td>` elements are injected via CSS `content: attr(data-label)` to create labels for the vertical card layout.
 
+<<<<<<< HEAD
+=======
+### Grid Area Prioritization (Deep Views)
+In technical editor views (e.g., `hardware_view.php`), we prioritize metadata over long forms on mobile using `grid-template-areas`:
+1. **Desktop**: `grid-template-areas: "main sidebar";` (Form left, secondary info right).
+2. **Mobile**: `grid-template-areas: "sidebar" "main";` (Metadata/Quick-specs first, technical form follows).
+This ensures technicians see current status and specs at the top of their screen before scrolling into input fields.
+
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 ## 10. File System Integrity
 The system treats the folder structure as part of its "state". The `ensure_system_folders()` function in `includes/functions.php` is responsible for:
 - Creating missing export directories (`exports/labels`, `exports/orders`).

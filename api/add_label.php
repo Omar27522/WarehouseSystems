@@ -23,12 +23,23 @@ try {
     $bios_state = sanitize_text($_POST['bios_state'] ?? 'Unknown');
     $description = sanitize_text($_POST['description'] ?? 'Untested');
     $warehouse_location = sanitize_text($_POST['warehouse_location'] ?? null);
+<<<<<<< HEAD
 
     // 2. Check for Duplicates (Avoid redundant Label Profiles)
     // We check if an item with exact technical specs and location already exists.
     $check_stmt = $pdo_labels->prepare("
         SELECT id FROM items 
         WHERE brand = :brand AND model = :model AND (series = :series OR (series IS NULL AND :series_null IS NULL))
+=======
+    $serial_number = sanitize_text($_POST['serial_number'] ?? null);
+
+    // 2. Check for Duplicates (Avoid redundant Label Profiles)
+    // Now including Serial Number in the check to ensure truly unique entries.
+    $check_stmt = $pdo_labels->prepare("
+        SELECT id FROM items 
+        WHERE brand = :brand AND model = :model AND (series = :series OR (series IS NULL AND :series_null IS NULL))
+        AND (serial_number = :sn OR (serial_number IS NULL AND :sn_null IS NULL))
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         AND (cpu_gen = :cpu_gen OR (cpu_gen IS NULL AND :cpu_gen_null IS NULL))
         AND (cpu_specs = :cpu_specs OR (cpu_specs IS NULL AND :cpu_specs_null IS NULL))
         AND (cpu_cores = :cpu_cores OR (cpu_cores IS NULL AND :cpu_cores_null IS NULL))
@@ -44,6 +55,10 @@ try {
     $check_stmt->execute([
         ':brand' => $brand, ':model' => $model, 
         ':series' => $series, ':series_null' => $series,
+<<<<<<< HEAD
+=======
+        ':sn' => $serial_number, ':sn_null' => $serial_number,
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         ':cpu_gen' => $cpu_gen, ':cpu_gen_null' => $cpu_gen,
         ':cpu_specs' => $cpu_specs, ':cpu_specs_null' => $cpu_specs,
         ':cpu_cores' => $cpu_cores, ':cpu_cores_null' => $cpu_cores,
@@ -64,11 +79,19 @@ try {
         $is_duplicate = false;
         $stmt = $pdo_labels->prepare("
             INSERT INTO items (
+<<<<<<< HEAD
                 brand, model, series, cpu_gen, cpu_specs, cpu_cores, cpu_speed, 
                 ram, storage, battery, bios_state, description, 
                 warehouse_location, status
             ) VALUES (
                 :brand, :model, :series, :cpu_gen, :cpu_specs, :cpu_cores, :cpu_speed, 
+=======
+                brand, model, series, serial_number, cpu_gen, cpu_specs, cpu_cores, cpu_speed, 
+                ram, storage, battery, bios_state, description, 
+                warehouse_location, status
+            ) VALUES (
+                :brand, :model, :series, :sn, :cpu_gen, :cpu_specs, :cpu_cores, :cpu_speed, 
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 :ram, :storage, :battery, :bios_state, :description, 
                 :location, 'In Warehouse'
             )
@@ -78,6 +101,10 @@ try {
             ':brand' => $brand,
             ':model' => $model,
             ':series' => $series,
+<<<<<<< HEAD
+=======
+            ':sn' => $serial_number,
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
             ':cpu_gen' => $cpu_gen,
             ':cpu_specs' => $cpu_specs,
             ':cpu_cores' => $cpu_cores,

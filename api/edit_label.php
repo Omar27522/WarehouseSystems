@@ -38,6 +38,10 @@ try {
     $bios_state          = sanitize_text($_POST['bios_state']         ?? null);
     $description         = sanitize_text($_POST['description']        ?? null);
     $warehouse_location  = sanitize_text($_POST['warehouse_location'] ?? null);
+<<<<<<< HEAD
+=======
+    $serial_number       = sanitize_text($_POST['serial_number']      ?? null);
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     $status              = sanitize_text($_POST['status']             ?? 'In Warehouse');
 
     if (!$brand || !$model) {
@@ -65,6 +69,10 @@ try {
             bios_state         = :bios_state,
             description        = :description,
             warehouse_location = :warehouse_location,
+<<<<<<< HEAD
+=======
+            serial_number      = :serial_number,
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
             status             = :status
         WHERE id = :id
     ");
@@ -89,6 +97,10 @@ try {
         ':bios_state'         => $bios_state,
         ':description'        => $description,
         ':warehouse_location' => $warehouse_location,
+<<<<<<< HEAD
+=======
+        ':serial_number'      => $serial_number,
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         ':status'             => $status,
         ':id'                 => $id,
     ]);

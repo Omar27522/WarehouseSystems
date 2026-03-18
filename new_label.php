@@ -20,6 +20,7 @@ try {
     
     <!-- MAIN FORM COLUMN -->
     <div class="panel" style="position: relative;">
+<<<<<<< HEAD
         <form id="newLabelForm" class="form-grid">
             <!-- Column 1: Core Specs -->
             <div>
@@ -135,6 +136,16 @@ try {
 
             <!-- Full Width Action -->
             <div style="grid-column: 1 / -1; margin-top: 20px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px;">
+=======
+        <form id="newLabelForm">
+            <?php 
+                $formType = 'add';
+                include 'includes/hardware_form.php'; 
+            ?>
+
+            <!-- Full Width Action -->
+            <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px;">
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 <button type="submit" class="btn btn-success" id="submitLabelBtn" style="font-size: 1.1rem; padding: 12px 24px; font-weight: bold;">
                     ➕ Save & Print Label
                 </button>
@@ -148,7 +159,11 @@ try {
             <p id="successMsg" style="color:var(--text-secondary); margin-bottom:30px;"></p>
             
             <div style="display:flex; gap:15px; flex-wrap:wrap; justify-content:center;">
+<<<<<<< HEAD
                 <button id="btnAgain" class="btn btn-primary" style="padding:12px 20px;">🔄 Print Another (Same Profile)</button>
+=======
+                <button id="btnAgain" class="btn btn-primary" style="padding:12px 20px;">🔄 Open a New Copy</button>
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 <button id="btnReset" class="btn btn-success" style="padding:12px 20px;">✨ Add New Hardware</button>
                 <a href="labels.php" class="btn" style="padding:12px 20px; background:var(--bg-page); border:1px solid var(--border-color); color:var(--text-main);">📦 Go to Inventory</a>
             </div>
@@ -163,13 +178,32 @@ try {
         <?php else: ?>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <?php foreach ($recentLabels as $rl): ?>
+<<<<<<< HEAD
                     <div style="padding: 10px; background: var(--bg-panel); border-radius: 6px; font-size: 0.85rem; border: 1px solid var(--border-color);">
+=======
+                    <div class="recent-card clone-trigger" 
+                         style="padding: 10px; background: var(--bg-panel); border-radius: 6px; font-size: 0.85rem; border: 1px solid var(--border-color); cursor: pointer;"
+                         data-brand="<?= htmlspecialchars($rl['brand'] ?? '') ?>"
+                         data-model="<?= htmlspecialchars($rl['model'] ?? '') ?>"
+                         data-series="<?= htmlspecialchars($rl['series'] ?? '') ?>"
+                         data-cpu-gen="<?= htmlspecialchars($rl['cpu_gen'] ?? '') ?>"
+                         data-cpu-specs="<?= htmlspecialchars($rl['cpu_specs'] ?? '') ?>"
+                         data-cpu-cores="<?= htmlspecialchars($rl['cpu_cores'] ?? '') ?>"
+                         data-cpu-speed="<?= htmlspecialchars($rl['cpu_speed'] ?? '') ?>"
+                         data-ram="<?= htmlspecialchars($rl['ram'] ?? '') ?>"
+                         data-storage="<?= htmlspecialchars($rl['storage'] ?? '') ?>"
+                         title="Click to clone these specs">
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                         <div style="font-weight: bold;"><?= htmlspecialchars($rl['brand'] . ' ' . $rl['model']) ?></div>
                         <div style="color: var(--text-secondary); font-size: 0.75rem;">
                             <?= htmlspecialchars($rl['cpu_gen']) ?> | <?= htmlspecialchars($rl['ram']) ?>
                         </div>
                         <div style="margin-top: 5px;">
                             <span style="font-size: 0.7rem; color: var(--accent-color);">ID: #<?= str_pad($rl['id'], 5, '0', STR_PAD_LEFT) ?></span>
+<<<<<<< HEAD
+=======
+                            <span style="float:right; font-size:0.7rem; color:var(--text-secondary);">📋 Clone</span>
+>>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                         </div>
                     </div>
                 <?php endforeach; ?>
