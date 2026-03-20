@@ -74,10 +74,18 @@ try {
     <!-- Filter Controls -->
     <div class="filter-controls">
         <input type="text" id="filterSearch"
-               placeholder="Search Buyer, Order #, Model, S/N…"
+               placeholder="Search Buyer, Order #, Model, Specs, or Status (e.g. Paid)…"
                class="filter-search-input">
         
-        <div id="filterMsg" class="filter-message"></div>
+        <select id="filterStatus" class="filter-select">
+            <option value="">All Statuses</option>
+            <option value="Active">Active 🚀</option>
+            <option value="Paid">Paid ✅</option>
+            <option value="Dispatched">Dispatched 🚚</option>
+            <option value="Pending">Pending ⏳</option>
+        </select>
+
+        <div id="filterMsg" class="filter-message" style="margin-top:0;"></div>
     </div>
 </div>
 
@@ -129,7 +137,10 @@ try {
         <td data-label="Buyer">
             <div class="tpl-buyer-box">
                 <div class="tpl-buyer-name font-bold text-main" style="font-size:0.95rem;">BUYER</div>
-                <div class="tpl-order-num text-xs text-secondary" style="margin-top:2px;">ORDER #</div>
+                <div class="flex-between" style="margin-top:2px;">
+                    <div class="tpl-order-num text-xs text-secondary">ORDER #</div>
+                    <div class="tpl-status-badge">STATUS</div>
+                </div>
             </div>
         </td>
         <td data-label="CPU" class="text-sm">

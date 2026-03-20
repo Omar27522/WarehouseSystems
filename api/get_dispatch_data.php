@@ -8,6 +8,7 @@ require_once '../includes/functions.php';
 try {
     $q       = isset($_GET['q'])       ? trim($_GET['q'])       : '';
     $archive = isset($_GET['archive']) ? (int)$_GET['archive']  : 0;
+    $status  = isset($_GET['status'])  ? trim($_GET['status'])  : '';
 
     // 1. Fetch Customers mapping for Buyer names
     $stmt_c = $pdo_rolodex->query("SELECT customer_id, company_name FROM customers");
@@ -24,17 +25,57 @@ try {
         $conditions[] = "o.order_date >= datetime('now', '-{$archive} days')";
     }
 
+    if ($status !== '') {
+        $conditions[] = "o.invoice_status = :status";
+        $params[':status'] = $status;
+    }
+
     if ($q !== '') {
         $keywords = explode(' ', $q);
         $i = 1;
+        
+        // --- PROACTIVE IMPROVEMENT: Multi-Table Search Pre-filter ---
+        // Search across customer fields in rolodex.sqlite
+        $matching_customer_ids = [];
+        $stmt_matching = $pdo_rolodex->query("SELECT customer_id FROM customers");
+        foreach ($customers as $cid => $cname) {
+            // We'll also check other fields if needed, but since we already have the map:
+            $match_found = false;
+            foreach ($keywords as $word) {
+                // Check name
+                if (stripos($cname, $word) !== false) { $match_found = true; break; }
+            }
+            if ($match_found) $matching_customer_ids[] = (int)$cid;
+        }
+
         foreach ($keywords as $word) {
             $word = trim($word);
             if ($word === '') continue;
             
             $paramKey = ":q" . $i;
             $search_term = '%' . $word . '%';
-            $conditions[] = "(i.brand LIKE $paramKey OR i.model LIKE $paramKey OR i.specs_blob LIKE $paramKey 
-                              OR CAST(o.order_number AS TEXT) LIKE $paramKey)";
+            
+            // Smarter Order Number handling: "ORD-000123", "PO-123", "123"
+            $numeric_q = 0;
+            $clean_q = preg_replace('/[^0-9]/', '', $word);
+            if (is_numeric($clean_q)) {
+                $numeric_q = (int)$clean_q;
+            }
+
+            $customer_cond = "";
+            if (!empty($matching_customer_ids)) {
+                $customer_cond = " OR o.customer_id IN (" . implode(',', $matching_customer_ids) . ")";
+            }
+
+            // Include Invoice Status in search
+            $conditions[] = "(i.brand LIKE $paramKey 
+                              OR i.model LIKE $paramKey 
+                              OR i.specs_blob LIKE $paramKey 
+                              OR o.invoice_status LIKE $paramKey
+                              OR CAST(o.order_number AS TEXT) LIKE $paramKey 
+                              OR o.order_number = " . (int)$numeric_q . "
+                              $customer_cond)";
+            
             $params[$paramKey] = $search_term;
             $i++;
         }

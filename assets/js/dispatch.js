@@ -17,6 +17,7 @@
 
     const DOM = {
         filterSearch: document.getElementById('filterSearch'),
+        filterStatus: document.getElementById('filterStatus'),
         filterMsg: document.getElementById('filterMsg'),
         tbody: document.getElementById('inventoryTableBody'),
         viewArchiveBtn: document.getElementById('viewArchiveBtn')
@@ -60,6 +61,20 @@
         tr.querySelector('.tpl-buyer-name').textContent = item.buyer_name || 'Anonymous Buyer';
         tr.querySelector('.tpl-order-num').textContent = item.buyer_order_num || 'Direct Sale';
 
+        // Status Badge Styling
+        const badge = tr.querySelector('.tpl-status-badge');
+        const status = item.invoice_status || 'Active';
+        badge.textContent = status;
+        badge.className = 'tpl-status-badge status-tag';
+        
+        switch(status.toLowerCase()) {
+            case 'paid': badge.classList.add('status-paid'); break;
+            case 'dispatched': badge.classList.add('status-dispatched'); break;
+            case 'canceled': badge.classList.add('status-canceled'); break;
+            case 'active': badge.classList.add('status-active'); break;
+            case 'pending': badge.classList.add('status-pending'); break;
+        }
+
         // CPU & Specs (From snapshot)
         tr.querySelector('.tpl-cpu-gen').textContent = item.cpu_gen || '—';
         tr.querySelector('.tpl-cpu-specs').textContent = item.description || '';
@@ -95,7 +110,8 @@
         DOM.filterMsg.textContent = 'Searching Dispatch Records…';
 
         try {
-            const url = `${CONFIG.API_ENDPOINTS.GET_LABELS}?q=${encodeURIComponent(query)}&archive=${archiveMode}`;
+            const status = DOM.filterStatus ? DOM.filterStatus.value : '';
+            const url = `${CONFIG.API_ENDPOINTS.GET_LABELS}?q=${encodeURIComponent(query)}&archive=${archiveMode}&status=${encodeURIComponent(status)}`;
             const response = await fetch(url);
             const json = await response.json();
 
@@ -121,6 +137,10 @@
         clearTimeout(filterTimer);
         filterTimer = setTimeout(runDispatchFilter, 300);
     });
+    
+    if (DOM.filterStatus) {
+        DOM.filterStatus.addEventListener('change', runDispatchFilter);
+    }
 
     DOM.viewArchiveBtn.addEventListener('click', () => {
         if (archiveMode === 90) {
