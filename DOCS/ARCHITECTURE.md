@@ -37,7 +37,8 @@ The application implements a multi-keyword search engine. When a technician sear
 * **`cosmetic_grade`** (`TEXT`): Grade A, B, or C.
 * **`work_notes`** (`TEXT`): Detailed technical/reparation notes for refurbished units.
 * **`description`** (`TEXT`): Internal condition (e.g., 'Untested', 'Refurbished').
-* **`warehouse_location`** (`TEXT`): Physical location of the master batch or prototype.
+* **`status`** (`TEXT`): ALWAYS `'In Warehouse'`. Labels are treated as master templates and remain in the library permanently.
+* **`updated_at`** (`DATETIME`): Last timestamp for a configuration edit.
 * **`created_at`** (`DATETIME DEFAULT CURRENT_TIMESTAMP`)
 
 ---
@@ -48,6 +49,7 @@ This database tracks **B2B Purchase Orders**. It utilizes a Header-Line architec
 ### Table: `purchase_orders` (Header)
 * **`order_number`** (`INTEGER PRIMARY KEY AUTOINCREMENT`): Unique invoice number.
 * **`customer_id`** (`INTEGER NOT NULL`): Foreign Key to `rolodex.sqlite`.
+* **`invoice_status`** (`TEXT`): **`Pending`, `Active`, `Paid`, `Dispatched`, `Canceled`**.
 * **`order_date`** (`DATETIME DEFAULT CURRENT_TIMESTAMP`)
 * **`total_qty`** (`INTEGER`): Sum of all quantities on the order.
 * **`total_price`** (`NUMERIC`): Total dollar value.
@@ -55,12 +57,11 @@ This database tracks **B2B Purchase Orders**. It utilizes a Header-Line architec
 
 ### Table: `order_items` (Lines)
 * **`line_id`** (`INTEGER PRIMARY KEY AUTOINCREMENT`)
-* **`order_number`** (`INTEGER NOT NULL`): Link to `purchase_orders`.
-* **`item_id`** (`INTEGER NOT NULL`): Link to the master Label template in `labels.sqlite`.
-* **`brand`** / **`model`** (`TEXT`): Snapshotted display names.
-* **`specs_blob`** (`TEXT`): A snapshot of the exact specs at time of sale.
-* **`qty`** (`INTEGER`): Number of units sold.
-* **`unit_price`** (`NUMERIC`): Price per unit.
+* **`order_number`** (`INTEGER NOT NULL\`)
+* **`item_id`** (`INTEGER NOT NULL`): Original Master ID from `labels.sqlite`.
+* **`specs_blob`** (`TEXT`): **Technical Snapshot.** Stores the stringified hardware profile at time of sale.
+* **`qty`** (`INTEGER`): Units sold in this line.
+* **`unit_price`** (`NUMERIC`): Sold price per unit.
 * **`total_price`** (`NUMERIC`): `qty * unit_price`.
 
 ---
@@ -80,6 +81,7 @@ This acts as a lightweight CRM (Customer Relationship Management) system. It sto
 | `tax_id` | TEXT | Linked to "Address" field in UI (per user request) |
 | `website` | TEXT | Official company URL |
 | `lead_status` | TEXT | `'Active Customer'`, `'New Lead'`, `'Inactive'` |
+| `tier` | TEXT | **Gold (10%)**, **Silver (5%)**, **Bronze (0%)** |
 | `notes` | TEXT | Internal background notes |
 | `created_at` | DATETIME | Default `CURRENT_TIMESTAMP` |
 
@@ -98,14 +100,14 @@ Because we strictly avoid massive PHP frameworks or Composer bundles, we utilize
    - The generation engine surgically deletes the `Configurations2/` directory and `manifest.rdf` entry. These are macro-bearing config files that trigger LibreOffice's "Macros Disabled" or "File Corrupt" warnings on externally generated documents.
    - The system **rebuilds the `manifest.xml`** from scratch to ensure strict conformance with ODF 1.2 ISO schemas.
 
-### Hybrid Printing Strategy
-The application utilizes two distinct printing workflows based on document type:
-<<<<<<< HEAD
-- **Browser-Native (Labels)**: `print_label.php` renders hardware labels directly in HTML/CSS. It maps to exact **3" x 1.74"** dimensions via `@page` rules. This provides instant, zero-storage output (no files written to disk) for rapid warehouse use.
-=======
-- **Browser-Native (Labels)**: `print_label.php` renders hardware labels directly in HTML/CSS. It maps to exact **2" x 1"** dimensions via `@page` rules. This provides instant, zero-storage output (no files written to disk) for rapid warehouse use.
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-- **Windows-Native (B2B Orders)**: B2B Purchase Orders are generated as persistent `.ots` files and launched directly in **LibreOffice Calc** via `api/open_windows_file.php`. This allows for native spreadsheet editing and professional printing controls.
+### Hybrid Printing Approach:
+  - **Browser Direct:** Instant, zero-file labels for rapid warehouse use. Strictly **2" x 1"** dimensions via margin-less CSS. Optimized for **1-PDF-file, 2-page** output (Label A: Branding + Label B: Specs).
+  - **Windows Launch:** Precise, persistent document generation for official forms (.odt / .ots).
+- **Smart Panels:** Sidebar widgets in `hardware_view.php` utilize `<details>` toggles to hide deep technical specs while keeping critical info (**CPU/Series/RAM/Storage**) visible.
+
+### Data Maintenance Policy
+- **Sold Records**: Unlike order history which is protected, individual hardware profiles in `labels.sqlite` can be deleted regardless of status (including 'Sold') to allow for warehouse database maintenance.
+- **Default Status**: New hardware intake defaults to `'In Warehouse'` status when conditions are marked as 'Untested'.
 
 ### Technical Implementation:
 - **XML Escaping**: All dynamic strings are sanitized using `htmlspecialchars(..., ENT_XML1)` to ensure valid technical XML.
@@ -120,12 +122,15 @@ require_once __DIR__ . '/../includes/db.php';
 ```
 This ensures that `shell_exec` and file writes always resolve to the correct project root regardless of the current working directory.
 
-## 7. Order Rollback (Data Integrity)
-To handle cancelled deals, the system supports a **Rollback** mechanism:
-1. The physical `.ots` file is permanently deleted from `/exports/orders/`.
-2. All line-item records linked to the `order_number` are deleted from `order_items`.
-3. The main Order header is deleted from `purchase_orders`.
-*Note: Because Label Profiles are reusable templates, they do not need to be "returned" to inventory status.*
+## 7. Order Lifecycle & Status Workflow
+The system implements a multi-stage logistical workflow to track items from sale to floor exit:
+1. **Pending ⏳**: Order is created as a draft or waiting for approval.
+2. **Active 🚀**: Order is finalized and ready for the technical team to pull stock.
+3. **Paid ✅**: Payment confirmed. Items are marked for priority dispatch.
+4. **Dispatched 🚚**: Final Logistical State. Items have physically left the building. Orders move to the Archive after 90 days.
+5. **Canceled ❌**: Voided order. Item counts are removed from the sales history.
+
+*Note: Because Label Profiles in `labels.php` are master templates, they remain 'In Warehouse' permanently and are never physically 'moved' between databases.*
 ## 8. System Fortification (Self-Healing)
 To ensure the application remains operational even after accidental file deletion or potential corruption, the system implements a "Self-Healing" architecture.
 
@@ -152,18 +157,25 @@ On screens smaller than 900px, standard data tables use a CSS transformation:
 2. `display: block` is applied to `<tr>` and `<td>`.
 3. `data-label` attributes on `<td>` elements are injected via CSS `content: attr(data-label)` to create labels for the vertical card layout.
 
-<<<<<<< HEAD
-=======
-### Grid Area Prioritization (Deep Views)
-In technical editor views (e.g., `hardware_view.php`), we prioritize metadata over long forms on mobile using `grid-template-areas`:
-1. **Desktop**: `grid-template-areas: "main sidebar";` (Form left, secondary info right).
-2. **Mobile**: `grid-template-areas: "sidebar" "main";` (Metadata/Quick-specs first, technical form follows).
-This ensures technicians see current status and specs at the top of their screen before scrolling into input fields.
-
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 ## 10. File System Integrity
 The system treats the folder structure as part of its "state". The `ensure_system_folders()` function in `includes/functions.php` is responsible for:
 - Creating missing export directories (`exports/labels`, `exports/orders`).
 - Setting up the `db/backups` directory.
 - Injecting security `.htaccess` files to prevent directory indexing and protect sensitive B2B documents.
 - Resolving absolute paths for the PowerShell engine to ensure ODT generation succeeds across different local environments.
+
+---
+
+## 11. Hardware Mapping Layer (Single Source of Truth)
+To prevent "field name guessing" errors by AI agents and ensure site-wide stability during schema evolutions, the system implements a **Dual-Path Mapping Layer**.
+
+### A. Core Definition Files
+- **PHP** (`includes/hardware_mapping.php`): Defines the `HW_FIELDS` constant array. Used for all backend SQL queries and POST data collection.
+- **JavaScript** (`assets/js/hardware_mapping.js`): Mirrors the mapping in the browser global `window.HW_FIELDS`. Used for all dynamic UI rendering, form element naming, and event handling.
+
+### B. Implementation Rules
+- **Rule 1**: AI agents and developers must NEVER hardcode strings like `'cpu_specs'`. They MUST reference the mapping (e.g., `HW_FIELDS['CPU_SPECS']`).
+- **Rule 2**: Any new hardware field must be added to both mapping files simultaneously.
+
+### C. Verification Strategy
+- **Diagnostic Tool** (`debug/verify_mapping.php`): A diagnostic script that performs a 3-way check between the PHP map, the JS map, and the actual SQLite database schema. It ensures that all mapped fields exist as columns in the `items` table and alerts if synchronization is broken.

@@ -7,22 +7,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<<<<<<< HEAD
-    <title>IQA Metal Inventory</title>
-=======
     <title>TEST ENVIROMENT</title>
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 
     <!-- Global CSS Variables & Layout Rules -->
     <link rel="stylesheet" href="assets/css/style.css">
 
-<<<<<<< HEAD
-=======
     <!-- Universal Actions Bridge -->
     <script src="assets/js/actions.js"></script>
     <script src="assets/js/print_engine.js"></script>
+    <script src="assets/js/hardware_mapping.js"></script>
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     <!-- Optional: A nice system font hook if desired later. Using system-ui fallbacks in CSS for now -->
 </head>
 <body class="safe-area-bottom">
@@ -64,7 +58,7 @@
                 </div>
             </div>
 
-            <label style="display:block; margin-bottom:10px; font-weight:700; font-size:0.85rem;">Quantity of Sets</label>
+            <label for="printQty" style="display:block; margin-bottom:10px; font-weight:700; font-size:0.85rem;">Quantity of Sets</label>
             <div style="display:flex; gap:10px; align-items:center; margin-bottom:25px;">
                 <input type="number" id="printQty" value="1" min="1" max="100" style="width:80px; text-align:center; font-size:1.2rem; font-weight:bold;">
                 <p style="font-size:0.8rem; color:var(--text-secondary);">Copies of the document.</p>
@@ -99,15 +93,13 @@
         <nav style="flex: 1; overflow-y: auto;">
             <ul class="nav-menu">
                 <li><a href="index.php" class="nav-link" id="nav-dashboard">📊 Dashboard</a></li>
-<<<<<<< HEAD
-=======
                 <li><a href="analytics.php" class="nav-link" id="nav-analytics">📈 Performance</a></li>
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 <br>
 
                 <!-- LABELS / INVENTORY -->
                 <li style="color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 12px; margin-bottom: 8px;">Warehouse</li>
                 <li><a href="labels.php" class="nav-link" id="nav-labels">📦 Inventory Tracker</a></li>
+                <li><a href="dispatch.php" class="nav-link" id="nav-dispatch">🚚 Dispatch Desk</a></li>
                 <li><a href="new_label.php" class="nav-link" id="nav-new-label">🏷️ Print Hardware Label</a></li>
                 <br>
 

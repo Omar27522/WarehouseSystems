@@ -1,47 +1,23 @@
 <?php
+// labels.php
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
+require_once 'includes/hardware_mapping.php';
 require_once 'includes/header.php';
 
 // Initial server-side load (no filter) — JS takes over on filter/search
 $inventory = [];
 try {
     $stmt = $pdo_labels->query("SELECT * FROM items ORDER BY created_at DESC LIMIT 200");
-    $inventory = $stmt->fetchAll();
+    $inventory = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // Graceful fail
-}
-?>
-
-<<<<<<< HEAD
-<!-- Page Header + Filter Bar -->
-<div class="panel" style="margin-bottom: var(--spacing);">
-    <div class="flex-between" style="margin-bottom: 15px;">
-=======
-
-
-<?php
-require_once 'includes/db.php';
-require_once 'includes/functions.php';
-require_once 'includes/header.php';
-
-// Initial server-side load (no filter) — JS takes over on filter/search
-$inventory = [];
-try {
-    $stmt = $pdo_labels->query("SELECT * FROM items ORDER BY created_at DESC LIMIT 200");
-    $inventory = $stmt->fetchAll();
-} catch (PDOException $e) {
-    // Log the error for debugging purposes (e.g., to a file or a monitoring service)
     error_log("Database error in labels.php: " . $e->getMessage());
-    // Display a user-friendly message or redirect to an error page
-    // For now, we'll just ensure $inventory remains empty
 }
 ?>
 
 <!-- Page Header + Filter Bar -->
 <div class="panel mb-spacing">
     <div class="flex-between mb-15">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         <div>
             <h1>📦 Labeled Inventory</h1>
             <p>Master list of hardware configurations. Reuse these for printing labels or building orders.</p>
@@ -50,15 +26,6 @@ try {
     </div>
 
     <!-- Filter Controls -->
-<<<<<<< HEAD
-    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-        <input type="text" id="filterSearch"
-               placeholder="Search brand, model, series, location, ID…"
-               style="flex: 1; min-width: 240px;">
-
-        <button id="clearFilterBtn" class="btn"
-                style="background:var(--bg-page);border:1px solid var(--border-color);color:var(--text-secondary);padding:10px 14px;">
-=======
     <div class="filter-controls">
         <input type="text" id="filterSearch"
                placeholder="Search brand, model, series, location, S/N, ID…"
@@ -66,21 +33,15 @@ try {
 
         <select id="filterStatus" class="filter-select" style="padding:10px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-main);">
             <option value="In Warehouse">📦 In Warehouse</option>
-            <option value="Sold">🚚 Sold Records</option>
             <option value="all">🌐 View All</option>
         </select>
 
         <button id="clearFilterBtn" class="btn btn-secondary-outline">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
             ✕ Clear
         </button>
     </div>
 
-<<<<<<< HEAD
-    <div id="filterMsg" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); min-height: 18px;"></div>
-=======
     <div id="filterMsg" class="filter-message"></div>
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 </div>
 
 <!-- Inventory Table -->
@@ -99,152 +60,108 @@ try {
                 </tr>
             </thead>
             <tbody id="inventoryTableBody">
-                <?php if (empty($inventory)): ?>
-                    <tr>
-<<<<<<< HEAD
-                        <td colspan="9" class="text-center" style="padding: 30px; font-style: italic; color: var(--text-secondary);">
-                            No items found. <a href="new_label.php">Print your first label →</a>
-=======
-                        <td colspan="9" class="text-center empty-table-message">
-                            No items found. <a href="new_label.php" class="btn btn-link">Print your first label →</a>
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-                        </td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($inventory as $item): ?>
-                        <tr data-id="<?= (int)$item['id'] ?>">
-                            <td data-label="Model">
-<<<<<<< HEAD
-                                <?php if (($item['description'] ?? '') === 'Refurbished'): ?>
-                                    <a href="refurbished_view.php?id=<?= (int)$item['id'] ?>" style="color:var(--accent-color); text-decoration:none; font-weight:bold;">
-                                        <?= htmlspecialchars($item['brand'] . ' ' . $item['model']) ?>
-                                    </a>
-                                <?php else: ?>
-                                    <strong style="font-size: 1.1rem;"><?= htmlspecialchars($item['brand'] . ' ' . $item['model']) ?></strong>
-                                <?php endif; ?>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);"><?= htmlspecialchars($item['series'] ?? '') ?></div>
-                            </td>
-
-                            <td data-label="CPU" style="font-size:0.9rem;">
-                                <?= htmlspecialchars($item['cpu_gen'] ?? '—') ?>
-                            </td>
-
-                            <td data-label="RAM/HDD" style="font-size:0.9rem;">
-=======
-                                <?php
-                                    $linkDesc = $item['description'] ?? '';
-                                    $linkColorClass = '';
-                                    if ($linkDesc === 'Refurbished') {
-                                        $linkColorClass = 'text-accent';
-                                    }
-                                ?>
-                                <a href="hardware_view.php?id=<?= (int)$item['id'] ?>" class="font-bold text-lg no-underline <?= $linkColorClass ?>">
-                                    <?= htmlspecialchars($item['brand'] . ' ' . $item['model']) ?>
-                                </a>
-                                <div class="text-sm text-secondary"><?= htmlspecialchars($item['series'] ?? '') ?></div>
-                            </td>
-
-                            <td data-label="CPU" class="text-sm">
-                                <?= htmlspecialchars($item['cpu_gen'] ?? '—') ?>
-                            </td>
-
-                            <td data-label="RAM/HDD" class="text-sm">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-                                <?= htmlspecialchars($item['ram'] ?? 'None') ?> /
-                                <?= htmlspecialchars($item['storage'] ?? 'None') ?>
-                            </td>
-
-                            <td data-label="Location">
-<<<<<<< HEAD
-                                <span style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($item['warehouse_location'] ?? 'Unassigned') ?></span>
-=======
-                                <span class="font-bold text-main"><?= htmlspecialchars($item['warehouse_location'] ?? 'Unassigned') ?></span>
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-                            </td>
-
-                            <td data-label="Status">
-                                <?php
-                                    $desc  = $item['description'] ?? 'Untested';
-<<<<<<< HEAD
-                                    $color = $desc === 'For Parts' ? '#ef4444'
-                                           : ($desc === 'Refurbished' ? 'var(--accent-color)' : '#f39c12');
-                                ?>
-                                <span style="background:<?= $color ?>;color:#fff;padding:2px 8px;border-radius:6px;font-size:0.75rem;font-weight:800;text-transform:uppercase;">
-=======
-                                    $statusClass = '';
-                                    if ($desc === 'For Parts') {
-                                        $statusClass = 'status-for-parts';
-                                    } elseif ($desc === 'Refurbished') {
-                                        $statusClass = 'status-refurbished';
-                                    } else {
-                                        $statusClass = 'status-untested';
-                                    }
-                                ?>
-                                <span class="status-badge <?= $statusClass ?>">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-                                    <?= htmlspecialchars($desc) ?>
-                                </span>
-                            </td>
-
-<<<<<<< HEAD
-                            <td data-label="Added" style="font-size:0.85rem;color:var(--text-secondary);">
-                                <?= format_date($item['created_at']) ?>
-                            </td>
-
-                            <td style="white-space:nowrap;">
-                                <div style="display: flex; gap: 5px; justify-content: flex-end;">
-                                    <button class="btn reprint-btn" 
-                                            data-id="<?= (int)$item['id'] ?>" 
-                                            title="Reprint Label"
-                                            style="font-size:0.75rem; min-height: 38px; padding: 0 12px; background:var(--bg-page); border:1px solid var(--border-color); color:var(--text-main);">
-                                        🖨️ Print
-                                    </button>
-                                    <button class="btn edit-btn"
-                                            data-id="<?= (int)$item['id'] ?>"
-                                            style="font-size:0.75rem; min-height: 38px; padding: 0 12px; background:var(--bg-page); border:1px solid var(--border-color); color:var(--text-main);">
-=======
-                            <td data-label="Added" class="text-xs text-secondary">
-                                <?= format_date($item['created_at']) ?>
-                            </td>
-
-                            <td class="whitespace-nowrap">
-                                <div class="action-strip">
-                                    <button class="btn reprint-btn" 
-                                            data-id="<?= (int)$item['id'] ?>" 
-                                            title="Reprint Label">
-                                        🖨️ Print
-                                    </button>
-                                    <button class="btn open-label-btn" 
-                                            data-id="<?= (int)$item['id'] ?>" 
-                                            data-brand="<?= htmlspecialchars($item['brand'] ?? '') ?>"
-                                            data-model="<?= htmlspecialchars($item['model'] ?? '') ?>"
-                                            title="Open Folder/File">
-                                        📂 Open
-                                    </button>
-                                    <button class="btn edit-btn"
-                                            data-id="<?= (int)$item['id'] ?>">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-                                        ✏️ Edit
-                                    </button>
-                                    <button class="btn btn-danger delete-btn"
-                                            data-id="<?= (int)$item['id'] ?>"
-<<<<<<< HEAD
-                                            data-label="<?= htmlspecialchars($item['brand'] . ' ' . $item['model']) ?>"
-                                            style="font-size:0.75rem; min-height: 38px; padding: 0 12px;">
-=======
-                                            data-label="<?= htmlspecialchars($item['brand'] . ' ' . $item['model']) ?>">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-                                        🗑 Del
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                <!-- Data Hydrated by labels.js via #inventoryRowTemplate -->
+                <tr>
+                    <td colspan="7" class="text-center empty-table-message" style="padding: 50px;">
+                        <div class="loader-spinner" style="margin-bottom:10px;">⏳</div>
+                        Waking up the warehouse...
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- Inject Initial Data for JS Hydration -->
+<script>
+    window.INITIAL_INVENTORY = <?= json_encode($inventory) ?>;
+</script>
+
+<!-- TEMPLATES FOR DYNAMIC UI -->
+<!-- Template A: Display Row (Used by buildRow in labels.js) -->
+<template id="inventoryRowTemplate">
+    <tr data-id="">
+        <td data-label="Model">
+            <a href="#" class="tpl-link font-bold text-lg no-underline text-main">BRAND MODEL</a>
+            <div class="tpl-series text-sm text-secondary">SERIES</div>
+            <div class="tpl-sn text-xs" style="margin-top:4px; font-family:monospace; color:var(--text-secondary);">
+                <span class="tpl-sn-text">S/N</span>
+                <span class="tpl-sn-empty" style="opacity:0.5; display:none;">No Serial</span>
+            </div>
+        </td>
+        <td data-label="CPU" class="text-sm">
+            <div class="tpl-cpu-gen">GEN</div>
+            <div class="tpl-cpu-specs text-xs text-secondary">SPECS</div>
+        </td>
+        <td data-label="RAM/HDD" class="text-sm">
+            <span class="tpl-ram">RAM</span> / <span class="tpl-storage">STORAGE</span>
+        </td>
+        <td data-label="Location">
+            <div class="tpl-location-box">
+                <span class="tpl-location font-bold text-main">LOCATION</span>
+            </div>
+        </td>
+        <td data-label="Status">
+            <div class="tpl-status-box">
+                <span class="tpl-badge status-badge">CONDITION</span>
+                <div class="tpl-sold-badge" style="margin-top:4px; display:none;">
+                    <span class="status-badge" style="background:#4b5563; font-size:10px;">🚚 SOLD</span>
+                </div>
+            </div>
+        </td>
+        <td data-label="Added" class="tpl-added text-xs text-secondary">DATE</td>
+        <td class="whitespace-nowrap">
+            <div class="action-strip">
+                <button class="btn reprint-btn" data-id="" title="Reprint Label">🖨️ Print</button>
+                <button class="btn open-label-btn" data-id="" data-brand="" data-model="" title="Open Folder/File">📂 Open</button>
+                <button class="btn edit-btn" data-id="">✏️ Edit</button>
+                <button class="btn btn-danger delete-btn" data-id="" data-label="">🗑 Del</button>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<!-- Template B: Inline Edit Row (Used by openEditRow in labels.js) -->
+<template id="editRowTemplate">
+    <tr class="edit-mode-row">
+        <td style="vertical-align:top;" class="tpl-edit-cell-main">
+            <input type="hidden" name="id">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['BRAND'] ?>" placeholder="Brand" style="width:90px;margin-bottom:4px;padding:6px;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['MODEL'] ?>" placeholder="Model" style="width:100px;margin-bottom:4px;padding:6px;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['SERIES'] ?>" placeholder="Series" style="width:85px;margin-bottom:4px;padding:6px;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['SERIAL_NUMBER'] ?>" placeholder="Serial S/N" style="width:85px;padding:6px;font-family:monospace;font-size:0.75rem;">
+        </td>
+        <td style="vertical-align:top;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['CPU_GEN'] ?>" placeholder="Gen" style="width:110px;margin-bottom:4px;padding:6px;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['CPU_SPECS'] ?>" placeholder="Specs" style="width:110px;margin-bottom:4px;padding:6px;">
+            <div style="display:flex;gap:4px;">
+                <input type="text" class="edit-field" name="<?= HW_FIELDS['CPU_CORES'] ?>" placeholder="Cores" style="width:53px;padding:6px;font-size:0.75rem;">
+                <input type="text" class="edit-field" name="<?= HW_FIELDS['CPU_SPEED'] ?>" placeholder="Speed" style="width:53px;padding:6px;font-size:0.75rem;">
+            </div>
+        </td>
+        <td style="vertical-align:top;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['RAM'] ?>" placeholder="RAM" style="width:65px;margin-bottom:4px;padding:6px;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['STORAGE'] ?>" placeholder="Storage" style="width:100px;padding:6px;">
+        </td>
+        <td style="vertical-align:top;">
+            <input type="text" class="edit-field" name="<?= HW_FIELDS['LOCATION'] ?>" placeholder="Location" style="width:95px;padding:6px;">
+        </td>
+        <td style="vertical-align:top;">
+            <select class="edit-field" name="<?= HW_FIELDS['DESCRIPTION'] ?>" style="padding:6px;width:110px;">
+                <option value="Untested">Untested</option>
+                <option value="Refurbished">Refurbished</option>
+                <option value="For Parts">For Parts</option>
+            </select>
+        </td>
+        <td class="tpl-edit-added text-xs text-secondary" style="vertical-align:top; padding-top:12px;">DATE</td>
+        <td class="whitespace-nowrap" style="vertical-align:top;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <button class="btn btn-success save-edit-btn" data-id="" style="font-size:0.75rem;padding:5px 10px;">💾 Save</button>
+                <button class="btn cancel-edit-btn" style="font-size:0.75rem;padding:5px 10px;background:var(--bg-page);border:1px solid var(--border-color);color:var(--text-main);">✕ Cancel</button>
+            </div>
+        </td>
+    </tr>
+</template>
 
 <script src="assets/js/labels.js"></script>
 <script>
@@ -255,66 +172,21 @@ try {
         document.getElementById('clearFilterBtn').addEventListener('click', () => {
             const search = document.getElementById('filterSearch');
             search.value = '';
-            // Trigger the input event to run the filter logic (flexible widening)
             search.dispatchEvent(new Event('input'));
         });
     });
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
-<<<<<<< HEAD
-=======
-
-<!-- New CSS for improved styling -->
 <style>
-    /* Utility classes for spacing */
     .mb-spacing { margin-bottom: var(--spacing); }
     .mb-15 { margin-bottom: 15px; }
-
-    /* Filter controls layout */
-    .filter-controls {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .filter-search-input {
-        flex: 1;
-        min-width: 240px;
-    }
-
-    .btn-secondary-outline {
-        background: var(--bg-page);
-        border: 1px solid var(--border-color);
-        color: var(--text-secondary);
-        padding: 10px 14px;
-    }
-
-    .filter-message {
-        margin-top: 10px;
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        min-height: 18px;
-    }
-
-    /* Table styling */
-    .data-table .text-center {
-        text-align: center;
-    }
-
-    .empty-table-message {
-        padding: 30px;
-        font-style: italic;
-        color: var(--text-secondary);
-    }
-
-    .empty-table-message .btn-link {
-        color: var(--accent-color);
-        text-decoration: underline;
-    }
-
-    /* Text utilities */
+    .filter-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .filter-search-input { flex: 1; min-width: 240px; }
+    .btn-secondary-outline { background: var(--bg-page); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 10px 14px; }
+    .filter-message { margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); min-height: 18px; }
+    .data-table .text-center { text-align: center; }
+    .empty-table-message { padding: 30px; font-style: italic; color: var(--text-secondary); }
+    .empty-table-message .btn-link { color: var(--accent-color); text-decoration: underline; }
     .font-bold { font-weight: bold; }
     .text-lg { font-size: 1.1rem; }
     .text-sm { font-size: 0.9rem; }
@@ -324,30 +196,12 @@ try {
     .text-accent { color: var(--accent-color); }
     .no-underline { text-decoration: none; }
     .whitespace-nowrap { white-space: nowrap; }
-
-    /* Status badges */
-    .status-badge {
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        color: #fff; /* Default text color for badges */
-    }
-
-    .status-for-parts {
-        background: #ef4444; /* Red */
-    }
-
-    .status-refurbished {
-        background: var(--accent-color); /* Accent color */
-    }
-
-    .status-untested {
-        background: #f39c12; /* Orange */
-    }
+    .status-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #fff; display: inline-block; }
+    .status-for-parts { background: #ef4444; }
+    .status-refurbished { background: var(--accent-color); }
+    .status-untested { background: #f39c12; }
+    .edit-mode-row { background: var(--bg-surface-2) !important; }
 </style>
 
-
 <?php require_once 'includes/footer.php'; ?>
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
+

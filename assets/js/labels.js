@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 /**
  * assets/js/labels.js
  * Drives the labels.php warehouse inventory page.
@@ -13,50 +10,6 @@
  */
 'use strict';
 
-<<<<<<< HEAD
-// ─── FILTER BAR ─────────────────────────────────────────────────────────────
-
-const filterSearch  = document.getElementById('filterSearch');
-const filterMsg     = document.getElementById('filterMsg');
-const tbody         = document.getElementById('inventoryTableBody');
-
-let filterTimer = null;
-
-function runFilter() {
-    const q      = filterSearch.value.trim();
-
-    // Reset visibility if we are back to empty, but we must re-fetch 
-    // to restore the full list if the tbody was previously cleared/replaced.
-    filterMsg.textContent = 'Searching…';
-
-    fetch('api/get_labels.php?q=' + encodeURIComponent(q))
-        .then(r => r.json())
-        .then(json => {
-            if (!json.success) {
-                filterMsg.textContent = 'Error: ' + (json.error || 'Unknown');
-                return;
-            }
-            tbody.innerHTML = '';
-            if (json.data.length === 0) {
-                filterMsg.textContent = 'No configurations match your filter.';
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center"
-                    style="padding:30px;color:var(--text-secondary);font-style:italic;">
-                    No matching label profiles found.</td></tr>`;
-            } else {
-                filterMsg.textContent = json.data.length + ' result(s)';
-                json.data.forEach(item => tbody.appendChild(buildRow(item)));
-                attachRowListeners();
-            }
-        })
-        .catch(() => { filterMsg.textContent = 'Network error.'; });
-}
-
-filterSearch.addEventListener('input', () => {
-    clearTimeout(filterTimer);
-    filterTimer = setTimeout(runFilter, 300);
-});
-
-=======
 // ─── CONFIGURATION & STATE ───────────────────────────────────────────────────
 
 const CONFIG = {
@@ -130,166 +83,96 @@ if (DOM.filterStatus) {
     DOM.filterStatus.addEventListener('change', runFilter);
 }
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
+// ─── ROW BUILDER ─────────────────────────────────────────────────────────────
+
 // ─── ROW BUILDER ─────────────────────────────────────────────────────────────
 
 /**
- * Builds a display <tr> element from an item data object.
-<<<<<<< HEAD
- * Matches the column order in the PHP-rendered table.
+ * Builds a display <tr> element from an item data object using <template>.
  */
 function buildRow(item) {
-    const tr = document.createElement('tr');
-    tr.dataset.id   = item.id;
-
-    const nameStr = `${esc(item.brand)} ${esc(item.model)}`;
-    const brandModelHtml = (item.description === 'Refurbished') 
-        ? `<a href="refurbished_view.php?id=${item.id}" style="color:var(--accent-color); text-decoration:none; font-weight:bold;">${nameStr}</a>`
-        : `<strong>${nameStr}</strong>`;
-
-    tr.innerHTML = `
-        <td>
-            ${brandModelHtml}
-            <div style="font-size:0.8rem;color:var(--text-secondary);">${esc(item.series || '')}</div>
-        </td>
-        <td style="font-size:0.9rem;">
-            <div>${esc(item.cpu_gen || '—')}</div>
-            <div style="font-size:0.75rem;color:var(--text-secondary);">${esc(item.cpu_specs || '')}</div>
-        </td>
-        <td style="font-size:0.9rem;">${esc(item.ram || 'None')} / ${esc(item.storage || 'None')}</td>
-        <td>${esc(item.warehouse_location || 'Unassigned')}</td>
-        <td>${conditionBadge(item.description)}</td>
-        <td style="font-size:0.85rem;color:var(--text-secondary);">${fmtDate(item.created_at)}</td>
-        <td style="white-space:nowrap;">
-            <button class="btn reprint-btn" data-id="${item.id}" title="Reprint Label"
-                    style="font-size:0.75rem;padding:5px 8px;background:var(--bg-page);border:1px solid var(--border-color);color:var(--text-main);margin-right:4px;">🖨️ Print</button>
-            <button class="btn edit-btn" data-id="${item.id}"
-                    style="font-size:0.75rem;padding:5px 8px;background:var(--bg-page);border:1px solid var(--border-color);color:var(--text-main);margin-right:4px;">✏️ Edit</button>
-            <button class="btn btn-danger delete-btn" data-id="${item.id}"
-                    data-label="${esc(item.brand + ' ' + item.model)}"
-                    style="font-size:0.75rem;padding:5px 8px;">🗑 Del</button>
-        </td>
-    `;
-
-    // Ensure row is fully opaque (removes legacy status-based dimming)
-    tr.style.opacity = '1';
-
-    return tr;
-}
-
-// ─── ATTACH LISTENERS to all rows (both server-rendered and JS-rendered) ─────
-
-function attachRowListeners() {
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.removeEventListener('click', onEditClick);
-        btn.addEventListener('click', onEditClick);
-    });
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.removeEventListener('click', onDeleteClick);
-        btn.addEventListener('click', onDeleteClick);
-    });
-    document.querySelectorAll('.reprint-btn').forEach(btn => {
-        btn.removeEventListener('click', onReprintClick);
-        btn.addEventListener('click', onReprintClick);
-    });
-}
-
-// Run on first page load for server-rendered rows
-attachRowListeners();
-
-// ─── EDIT ────────────────────────────────────────────────────────────────────
-
-function onEditClick(e) {
-    const id  = parseInt(e.target.dataset.id);
-    const tr  = e.target.closest('tr');
-
-    // Find the item data embedded in the row's cells
-    const cells = tr.querySelectorAll('td');
-
-    // Read existing values from DOM cells (simpler than hidden data attributes)
-    // We fetch fresh data from the server to pre-fill the form accurately
-    fetch('api/search_item.php?id=' + id)
-        .then(r => r.json())
-        .then(json => {
-            if (!json.success) { alert('Could not load item: ' + json.error); return; }
-            // The API now returns a 'results' array; take the first match for editing
-            const itemToEdit = json.data.results[0];
-            openEditRow(tr, itemToEdit);
-        });
-}
-
-function openEditRow(tr, item) {
-    // Save original HTML so Cancel can restore it
-    const originalHTML = tr.innerHTML;
-=======
- */
-function buildRow(item) {
-    const tr = document.createElement('tr');
+    const template = document.getElementById('inventoryRowTemplate');
+    const clone = document.importNode(template.content, true);
+    const tr = clone.querySelector('tr');
     tr.dataset.id = item.id;
 
-    const nameStr = `${esc(item.brand)} ${esc(item.model)}`;
-    const linkColorClass = (item.description === 'Refurbished') ? 'text-accent' : 'text-main';
-    const isSold = (item.status === 'Sold');
+    const F = window.HW_FIELDS;
+    const brand = item[F.BRAND] || '';
+    const model = item[F.MODEL] || '';
+    const series = item[F.SERIES] || '';
+    const sn = item[F.SERIAL_NUMBER] || '';
+    const description = item[F.DESCRIPTION] || 'Untested';
+    const status = item[F.STATUS] || 'In Warehouse';
+    const location = item[F.LOCATION] || 'Unassigned';
 
-    // Handle Sold status display
-    let statusEntry = conditionBadge(item.description);
-    if (isSold) {
-        statusEntry = `
-            <div style="margin-bottom:4px;">${conditionBadge(item.description)}</div>
-            <span class="status-badge" style="background:#4b5563; font-size:10px;">🚚 SOLD</span>
-        `;
+    // Link & Name
+    const link = tr.querySelector('.tpl-link');
+    link.href = `hardware_view.php?id=${item.id}`;
+    link.textContent = `${brand} ${model}`;
+    if (description === 'Refurbished') link.classList.add('text-accent');
+
+    tr.querySelector('.tpl-series').textContent = series;
+    
+    // Serial Number
+    const snText   = tr.querySelector('.tpl-sn-text');
+    const snEmpty  = tr.querySelector('.tpl-sn-empty');
+    if (sn) {
+        snText.textContent = `S/N: ${sn}`;
+        snText.style.display = 'inline';
+        snEmpty.style.display = 'none';
+    } else {
+        snText.style.display = 'none';
+        snEmpty.style.display = 'inline';
     }
 
-    // Handle Location / Buyer display
-    let locationEntry = `<span class="font-bold text-main">${esc(item.warehouse_location || 'Unassigned')}</span>`;
+    // CPU
+    tr.querySelector('.tpl-cpu-gen').textContent = item[F.CPU_GEN] || '—';
+    tr.querySelector('.tpl-cpu-specs').textContent = item[F.CPU_SPECS] || '';
+
+    // RAM / Storage
+    tr.querySelector('.tpl-ram').textContent = item[F.RAM] || 'None';
+    tr.querySelector('.tpl-storage').textContent = item[F.STORAGE] || 'None';
+
+    // Location / Buyer (Handle Sold logic)
+    const locBox = tr.querySelector('.tpl-location-box');
+    const isSold = (status === 'Sold');
+
     if (isSold && item.buyer_name) {
-        locationEntry = `
+        locBox.innerHTML = `
             <div class="text-xs text-secondary" style="margin-bottom:2px;">Sold to:</div>
             <div class="font-bold text-accent" style="font-size:0.85rem;">${esc(item.buyer_name)}</div>
             <div class="text-xs" style="color:var(--text-secondary); opacity:0.8;">${esc(item.buyer_order_num)}</div>
         `;
+    } else {
+        tr.querySelector('.tpl-location').textContent = location;
     }
 
-    tr.innerHTML = `
-        <td data-label="Model">
-            <a href="hardware_view.php?id=${item.id}" class="font-bold text-lg no-underline ${linkColorClass}">
-                ${nameStr}
-            </a>
-            <div class="text-sm text-secondary">${esc(item.series || '')}</div>
-            <div class="text-xs" style="margin-top:4px; font-family:monospace; color:var(--text-secondary);">
-                ${item.serial_number ? 'S/N: ' + esc(item.serial_number) : '<span style="opacity:0.5;">No Serial</span>'}
-            </div>
-        </td>
-        <td data-label="CPU" class="text-sm">
-            <div>${esc(item.cpu_gen || '—')}</div>
-            <div class="text-xs text-secondary">${esc(item.cpu_specs || '')}</div>
-        </td>
-        <td data-label="RAM/HDD" class="text-sm">
-            ${esc(item.ram || 'None')} / ${esc(item.storage || 'None')}
-        </td>
-        <td data-label="Location">
-            ${locationEntry}
-        </td>
-        <td data-label="Status">
-            ${statusEntry}
-        </td>
-        <td data-label="Added" class="text-xs text-secondary">
-            ${fmtDate(item.created_at)}
-        </td>
-        <td class="whitespace-nowrap">
-            <div class="action-strip">
-                <button class="btn reprint-btn" data-id="${item.id}" title="Reprint Label">🖨️ Print</button>
-                <button class="btn open-label-btn" 
-                        data-id="${item.id}" 
-                        data-brand="${esc(item.brand)}" 
-                        data-model="${esc(item.model)}"
-                        title="Open Folder/File">📂 Open</button>
-                <button class="btn edit-btn" data-id="${item.id}">✏️ Edit</button>
-                <button class="btn btn-danger delete-btn" data-id="${item.id}"
-                        data-label="${esc(item.brand + ' ' + item.model)}">🗑 Del</button>
-            </div>
-        </td>
-    `;
+    // Status Badge
+    const badge = tr.querySelector('.tpl-badge');
+    badge.textContent = description;
+    
+    if (description === 'For Parts') badge.classList.add('status-for-parts');
+    else if (description === 'Refurbished') badge.classList.add('status-refurbished');
+    else badge.classList.add('status-untested');
+
+    if (isSold) {
+        tr.querySelector('.tpl-sold-badge').style.display = 'block';
+    }
+
+    // Date
+    tr.querySelector('.tpl-added').textContent = fmtDate(item.created_at);
+
+    // Buttons
+    tr.querySelector('.reprint-btn').dataset.id = item.id;
+    const openBtn = tr.querySelector('.open-label-btn');
+    openBtn.dataset.id = item.id;
+    openBtn.dataset.brand = brand;
+    openBtn.dataset.model = model;
+    
+    tr.querySelector('.edit-btn').dataset.id = item.id;
+    const delBtn = tr.querySelector('.delete-btn');
+    delBtn.dataset.id = item.id;
+    delBtn.dataset.label = `${brand} ${model}`;
 
     return tr;
 }
@@ -305,9 +188,10 @@ DOM.tbody.addEventListener('click', (e) => {
     if (!btn) return;
 
     const id = btn.dataset.id;
+    const tr = btn.closest('tr');
 
     if (btn.classList.contains('edit-btn')) {
-        onEditClick(id, btn.closest('tr'));
+        onEditClick(id, tr);
     } else if (btn.classList.contains('delete-btn')) {
         onDeleteClick(id, btn.dataset.label);
     } else if (btn.classList.contains('reprint-btn')) {
@@ -315,9 +199,9 @@ DOM.tbody.addEventListener('click', (e) => {
     } else if (btn.classList.contains('open-label-btn')) {
         onOpenClick(btn);
     } else if (btn.classList.contains('save-edit-btn')) {
-        saveEdit(btn.closest('tr'), id);
+        saveEdit(tr, id);
     } else if (btn.classList.contains('cancel-edit-btn')) {
-        cancelEdit(btn.closest('tr'));
+        cancelEdit(tr);
     }
 });
 
@@ -345,111 +229,50 @@ async function onEditClick(id, tr) {
 }
 
 /**
- * Transforms a display row into an editable form.
+ * Transforms a display row into an editable form using <template>.
  */
 function openEditRow(tr, item) {
-    // Store original HTML to allow cancellation
     tr.dataset.originalHtml = tr.innerHTML;
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
+    const F = window.HW_FIELDS;
 
-    tr.innerHTML = `
-        <td style="vertical-align:top;">
-            <input type="hidden" name="id" value="${item.id}">
-<<<<<<< HEAD
-            <input type="text" class="edit-field" name="brand"  value="${esc(item.brand  || '')}" placeholder="Brand"  style="width:90px;margin-bottom:4px;padding:6px;">
-            <input type="text" class="edit-field" name="model"  value="${esc(item.model  || '')}" placeholder="Model"  style="width:100px;margin-bottom:4px;padding:6px;">
-            <input type="text" class="edit-field" name="series" value="${esc(item.series || '')}" placeholder="Series" style="width:85px;padding:6px;">
-        </td>
-        <td style="vertical-align:top;">
-            <input type="text" class="edit-field" name="cpu_gen"   value="${esc(item.cpu_gen || '')}"   placeholder="Gen"   style="width:110px;margin-bottom:4px;padding:6px;">
-=======
-            <input type="text" class="edit-field" name="brand" value="${esc(item.brand || '')}" placeholder="Brand" style="width:90px;margin-bottom:4px;padding:6px;">
-            <input type="text" class="edit-field" name="model" value="${esc(item.model || '')}" placeholder="Model" style="width:100px;margin-bottom:4px;padding:6px;">
-            <input type="text" class="edit-field" name="series" value="${esc(item.series || '')}" placeholder="Series" style="width:85px;margin-bottom:4px;padding:6px;">
-            <input type="text" class="edit-field" name="serial_number" value="${esc(item.serial_number || '')}" placeholder="Serial S/N" style="width:85px;padding:6px;font-family:monospace;font-size:0.75rem;">
-        </td>
-        <td style="vertical-align:top;">
-            <input type="text" class="edit-field" name="cpu_gen" value="${esc(item.cpu_gen || '')}" placeholder="Gen" style="width:110px;margin-bottom:4px;padding:6px;">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-            <input type="text" class="edit-field" name="cpu_specs" value="${esc(item.cpu_specs || '')}" placeholder="Specs" style="width:110px;margin-bottom:4px;padding:6px;">
-            <div style="display:flex;gap:4px;">
-                <input type="text" class="edit-field" name="cpu_cores" value="${esc(item.cpu_cores || '')}" placeholder="Cores" style="width:53px;padding:6px;font-size:0.75rem;">
-                <input type="text" class="edit-field" name="cpu_speed" value="${esc(item.cpu_speed || '')}" placeholder="Speed" style="width:53px;padding:6px;font-size:0.75rem;">
-            </div>
-        </td>
-        <td>
-<<<<<<< HEAD
-            <input type="text" class="edit-field" name="ram"     value="${esc(item.ram     || '')}" placeholder="RAM"     style="width:65px;margin-bottom:4px;padding:6px;">
-=======
-            <input type="text" class="edit-field" name="ram" value="${esc(item.ram || '')}" placeholder="RAM" style="width:65px;margin-bottom:4px;padding:6px;">
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
-            <input type="text" class="edit-field" name="storage" value="${esc(item.storage || '')}" placeholder="Storage" style="width:100px;padding:6px;">
-        </td>
-        <td>
-            <input type="text" class="edit-field" name="warehouse_location" value="${esc(item.warehouse_location || '')}" placeholder="Location" style="width:95px;padding:6px;">
-        </td>
-        <td>
-            <select class="edit-field" name="description" style="padding:6px;width:110px;">
-<<<<<<< HEAD
-                <option value="Untested"    ${item.description === 'Untested'   ? 'selected' : ''}>Untested</option>
-                <option value="Refurbished" ${item.description === 'Refurbished'? 'selected' : ''}>Refurbished</option>
-                <option value="For Parts"   ${item.description === 'For Parts'  ? 'selected' : ''}>For Parts</option>
-            </select>
-        </td>
-        <td style="font-size:0.85rem;color:var(--text-secondary);">${fmtDate(item.created_at)}</td>
-        <td style="white-space:nowrap;">
-            <button class="btn btn-success save-edit-btn" data-id="${item.id}"
-                    style="font-size:0.75rem;padding:5px 10px;margin-right:4px;">💾 Save</button>
-            <button class="btn cancel-edit-btn"
-                    style="font-size:0.75rem;padding:5px 10px;background:var(--bg-page);border:1px solid var(--border-color);color:var(--text-main);">✕ Cancel</button>
-        </td>
-    `;
+    const template = document.getElementById('editRowTemplate');
+    const clone = document.importNode(template.content, true);
+    const editTr = clone.querySelector('tr');
 
-    // Hidden fields for fields not shown in the edit row
-    ['battery', 'bios_state', 'cpu_details'].forEach(field => {
-        const hidden = document.createElement('input');
-        hidden.type  = 'hidden';
-        hidden.name  = field;
-        hidden.value = item[field] ?? '';
-        tr.querySelector('td').appendChild(hidden);
+    // Populate Fields
+    editTr.querySelector('input[name="id"]').value = item.id;
+    editTr.querySelectorAll('.edit-field').forEach(field => {
+        const val = item[field.name];
+        if (field.tagName === 'SELECT') {
+            field.value = val || 'Untested';
+        } else {
+            field.value = val || '';
+        }
     });
 
-    // Save
-    tr.querySelector('.save-edit-btn').addEventListener('click', () => saveEdit(tr, item.id));
+    editTr.querySelector('.tpl-edit-added').textContent = fmtDate(item.created_at);
+    editTr.querySelector('.save-edit-btn').dataset.id = item.id;
 
-    // Cancel
-    tr.querySelector('.cancel-edit-btn').addEventListener('click', () => {
-        tr.innerHTML      = originalHTML;
-        tr.style.opacity  = '1'; // Always reset opacity to full visibility
-        attachRowListeners();
+    // Add hidden fields for all mapping keys not present in the visible row inputs
+    const hiddenContainer = editTr.querySelector('.tpl-edit-cell-main');
+    const existingInputs = new Set([...editTr.querySelectorAll('input, select')].map(i => i.name));
+    
+    Object.values(F).forEach(dbField => {
+        if (!existingInputs.has(dbField)) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = dbField;
+            hidden.value = item[dbField] ?? '';
+            hiddenContainer.appendChild(hidden);
+        }
     });
-}
 
-function saveEdit(tr, id) {
-    const saveBtn      = tr.querySelector('.save-edit-btn');
-    saveBtn.disabled   = true;
-=======
-                <option value="Untested" ${item.description === 'Untested' ? 'selected' : ''}>Untested</option>
-                <option value="Refurbished" ${item.description === 'Refurbished' ? 'selected' : ''}>Refurbished</option>
-                <option value="For Parts" ${item.description === 'For Parts' ? 'selected' : ''}>For Parts</option>
-            </select>
-        </td>
-        <td class="text-xs text-secondary">${fmtDate(item.created_at)}</td>
-        <td class="whitespace-nowrap">
-            <button class="btn btn-success save-edit-btn" data-id="${item.id}" style="font-size:0.75rem;padding:5px 10px;margin-right:4px;">💾 Save</button>
-            <button class="btn cancel-edit-btn" style="font-size:0.75rem;padding:5px 10px;background:var(--bg-page);border:1px solid var(--border-color);color:var(--text-main);">✕ Cancel</button>
-        </td>
-    `;
-
-    // Add hidden fields for data not directly editable in the row
-    const firstCell = tr.querySelector('td');
-    ['battery', 'bios_state', 'cpu_details'].forEach(field => {
-        const hidden = document.createElement('input');
-        hidden.type = 'hidden';
-        hidden.name = field;
-        hidden.value = item[field] ?? '';
-        firstCell.appendChild(hidden);
-    });
+    // Swap Row
+    tr.innerHTML = '';
+    while (editTr.firstChild) {
+        tr.appendChild(editTr.firstChild);
+    }
+    tr.classList.add('edit-mode-row');
 }
 
 /**
@@ -458,6 +281,7 @@ function saveEdit(tr, id) {
 function cancelEdit(tr) {
     if (tr.dataset.originalHtml) {
         tr.innerHTML = tr.dataset.originalHtml;
+        tr.classList.remove('edit-mode-row');
         delete tr.dataset.originalHtml;
     }
 }
@@ -470,36 +294,16 @@ async function saveEdit(tr, id) {
     const originalBtnText = saveBtn.textContent;
     
     saveBtn.disabled = true;
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     saveBtn.textContent = '⏳…';
 
     const formData = new FormData();
     formData.append('id', id);
-    tr.querySelectorAll('.edit-field, input[type="hidden"]').forEach(field => {
+
+    // Collect all inputs and selects (including hidden ones)
+    tr.querySelectorAll('input, select').forEach(field => {
         if (field.name) formData.append(field.name, field.value);
     });
 
-<<<<<<< HEAD
-    fetch('api/edit_label.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(json => {
-            if (!json.success) {
-                alert('Save failed: ' + (json.error || 'Unknown error'));
-                saveBtn.disabled    = false;
-                saveBtn.textContent = '💾 Save';
-                return;
-            }
-            // Replace edit row with fresh display row
-            const newTr = buildRow(json.data.item);
-            tr.replaceWith(newTr);
-            attachRowListeners();
-        })
-        .catch(() => {
-            alert('Network error — changes were not saved.');
-            saveBtn.disabled    = false;
-            saveBtn.textContent = '💾 Save';
-        });
-=======
     try {
         const response = await fetch(CONFIG.API_ENDPOINTS.EDIT_LABEL, { method: 'POST', body: formData });
         const json = await response.json();
@@ -519,52 +323,20 @@ async function saveEdit(tr, id) {
         saveBtn.disabled = false;
         saveBtn.textContent = originalBtnText;
     }
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 }
+
 
 // ─── DELETE ──────────────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
-function onDeleteClick(e) {
-    const id    = parseInt(e.target.dataset.id);
-    const label = e.target.dataset.label;
-
-=======
 /**
  * Handles the delete button click with a confirmation prompt.
  */
 async function onDeleteClick(id, label) {
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     if (!confirm(`Delete "${label}" (#${pad(id, 5)}) from the warehouse?\n\nThis cannot be undone.`)) return;
 
     const formData = new FormData();
     formData.append('id', id);
 
-<<<<<<< HEAD
-    fetch('api/delete_label.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(json => {
-            if (!json.success) {
-                alert('Delete failed: ' + (json.error || 'Unknown error'));
-                return;
-            }
-            // Remove the row from the DOM
-            const tr = document.querySelector(`tr[data-id="${id}"]`);
-            if (tr) {
-                tr.style.transition = 'opacity 0.3s';
-                tr.style.opacity    = '0';
-                setTimeout(() => tr.remove(), 300);
-            }
-        })
-        .catch(() => alert('Network error — item was not deleted.'));
-}
-
-// ─── REPRINT ─────────────────────────────────────────────────────────────────
-
-function onReprintClick(e) {
-    const id = e.target.closest('.reprint-btn').dataset.id;
-    window.open('print_label.php?id=' + id, '_blank');
-=======
     try {
         const response = await fetch(CONFIG.API_ENDPOINTS.DELETE_LABEL, { method: 'POST', body: formData });
         const json = await response.json();
@@ -600,27 +372,11 @@ async function onOpenClick(btn) {
     } else {
         console.error('flashOpenLabel function not found.');
     }
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function esc(str) {
-<<<<<<< HEAD
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function pad(n, len) { return String(n).padStart(len, '0'); }
-function fmtDate(ts)  {
-    if (!ts) return '—';
-    const d = new Date(ts);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-function conditionBadge(desc) {
-    if (!desc) return '—';
-    const map = { 'For Parts': 'var(--btn-danger-bg)', 'Refurbished': 'var(--btn-success-bg)', 'Untested': '#f39c12' };
-    const color = map[desc] || 'var(--text-secondary)';
-    return `<span style="background:${color};color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78rem;font-weight:bold;">${esc(desc)}</span>`;
-=======
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -630,6 +386,29 @@ function conditionBadge(desc) {
         .replace(/'/g, '&#039;');
 }
 
+// ─── INITIALIZATION (Phase 2 Hydration) ──────────────────────────────────────
+
+(function init() {
+    if (window.INITIAL_INVENTORY && Array.isArray(window.INITIAL_INVENTORY)) {
+        const data = window.INITIAL_INVENTORY;
+        if (data.length > 0) {
+            DOM.tbody.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            data.forEach(item => fragment.appendChild(buildRow(item)));
+            DOM.tbody.appendChild(fragment);
+            DOM.filterMsg.textContent = `${data.length} items loaded`;
+        } else {
+            DOM.tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center empty-table-message" style="padding: 50px;">
+                        No items found. <a href="new_label.php" class="btn btn-primary" style="margin-top:10px; display:inline-block;">Print your first label →</a>
+                    </td>
+                </tr>`;
+            DOM.filterMsg.textContent = 'Warehouse empty.';
+        }
+    }
+})();
+
 function pad(n, len) { 
     return String(n).padStart(len, '0'); 
 }
@@ -638,18 +417,4 @@ function fmtDate(ts) {
     if (!ts) return '—';
     const d = new Date(ts);
     return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function conditionBadge(desc) {
-    if (!desc) return '—';
-    
-    let statusClass = 'status-untested';
-    if (desc === 'For Parts') {
-        statusClass = 'status-for-parts';
-    } else if (desc === 'Refurbished') {
-        statusClass = 'status-refurbished';
-    }
-
-    return `<span class="status-badge ${statusClass}">${esc(desc)}</span>`;
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 }

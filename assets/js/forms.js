@@ -1,77 +1,14 @@
-<<<<<<< HEAD
-/**
- * Dynamic Form UI Components & Submission Handlers
- */
 const newLabelForm = document.getElementById('newLabelForm');
 
 document.addEventListener("DOMContentLoaded", () => {
-    /* --- RAM & STORAGE CHECKBOX TOGGLES --- */
-    const hasRam = document.getElementById('has_ram');
-    const ramInput = document.getElementById('ram');
-    const hasStorage = document.getElementById('has_storage');
-    const storageInput = document.getElementById('storage');
-    
-    if (hasRam && ramInput) {
-        hasRam.addEventListener('change', (e) => {
-            ramInput.disabled = !e.target.checked;
-            if (e.target.checked) {
-                // Auto-set common default if currently empty
-                if (!ramInput.value) ramInput.value = "8GB";
-            } else {
-                ramInput.value = "";
-            }
-        });
-    }
+    const F = window.HW_FIELDS;
+    if (!F) return; // Guard against missing mapping
 
-    if (hasStorage && storageInput) {
-        hasStorage.addEventListener('change', (e) => {
-            storageInput.disabled = !e.target.checked;
-            if (e.target.checked) {
-                // Auto-set common default if currently empty
-                if (!storageInput.value) storageInput.value = "256GB NVMe";
-            } else {
-                storageInput.value = "";
-            }
-        });
-    }
-
-    /* --- SMART BIOS DEFAULTS BASED ON CONDITION --- */
-    const conditionSelect = document.getElementById('description');
-    const biosSelect      = document.getElementById('bios_state');
-
-    if (conditionSelect && biosSelect) {
-        conditionSelect.addEventListener('change', (e) => {
-            const cond = e.target.value;
-            if (cond === 'Untested' || cond === 'For Parts') {
-                biosSelect.value = 'Unknown';
-            } else if (cond === 'Refurbished') {
-                biosSelect.value = 'Unlocked';
-            }
-        });
-    }
-
-    /* --- CUSTOM NARROWING CPU SEARCH --- */
-    const cpuInput   = document.getElementById('cpu_gen');
-    const cpuWrapper = document.getElementById('cpuSearchWrapper');
-    const cpuGens = [
-        "6th - 7th Gen",
-        "i5 · 8th Gen", "i5 · 9th Gen", "i5 · 10th Gen", "i5 · 11th Gen", "i5 · 12th Gen", "i5 · 13th Gen",
-        "i7 · 8th Gen", "i7 · 9th Gen", "i7 · 10th Gen", "i7 · 11th Gen", "i7 · 12th Gen", "i7 · 13th Gen", "i7 · 14th Gen"
-    ];
-
-    if (cpuInput && cpuWrapper) {
-        cpuInput.addEventListener('input', () => {
-            const val = cpuInput.value.toLowerCase().trim();
-            if (!val) {
-=======
-const newLabelForm = document.getElementById('newLabelForm');
-
-document.addEventListener("DOMContentLoaded", () => {
     /* --- SECTION TOGGLING (Untested vs Refurbished) --- */
-    const conditionSelect = document.getElementById('description');
+    const conditionSelect = document.getElementById(F.DESCRIPTION);
     const technicalSection = document.getElementById('technicalSpecsSection');
-    const biosSelect = document.getElementById('bios_state');
-    const statusSelect = document.getElementById('status');
+    const biosSelect = document.getElementById(F.BIOS_STATE);
+    const statusSelect = document.getElementById(F.STATUS);
 
     if (conditionSelect) {
         const updateStatusOptions = (cond) => {
@@ -122,20 +59,20 @@ document.addEventListener("DOMContentLoaded", () => {
         card.addEventListener('click', () => {
             const data = card.dataset;
 
-            // Auto-fill form fields
-            const fields = [
-                'brand', 'model', 'series', 'cpu_gen', 'cpu_specs',
-                'cpu_cores', 'cpu_speed', 'ram', 'storage'
+            // Mapping keys to their logic names in dataset (camelCase)
+            const fieldsToClone = [
+                F.BRAND, F.MODEL, F.SERIES, F.CPU_GEN, F.CPU_SPECS,
+                F.CPU_CORES, F.CPU_SPEED, F.RAM, F.STORAGE
             ];
 
-            fields.forEach(f => {
+            fieldsToClone.forEach(f => {
                 const el = document.getElementById(f);
                 if (el) {
                     const val = data[f.replace(/_([a-z])/g, (g) => g[1].toUpperCase())] || '';
                     el.value = val;
 
                     // SPECIAL HANDLE FOR CPU SPECS CLONING
-                    if (f === 'cpu_specs') {
+                    if (f === F.CPU_SPECS) {
                         const prefixDisplay = document.getElementById('cpu_prefix_display');
                         const mainInput = document.getElementById('cpu_specs_main');
                         if (prefixDisplay && mainInput) {
@@ -163,12 +100,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     /* --- CUSTOM NARROWING CPU SEARCH --- */
-    const cpuInput = document.getElementById('cpu_gen');
-    const specsHidden = document.getElementById('cpu_specs'); // Hidden system field
+    const cpuInput = document.getElementById(F.CPU_GEN);
+    const specsHidden = document.getElementById(F.CPU_SPECS); // Hidden system field
     const prefixDisplay = document.getElementById('cpu_prefix_display');
     const mainSpecsInput = document.getElementById('cpu_specs_main'); // User visible part
-    const coresInput = document.getElementById('cpu_cores');
-    const speedInput = document.getElementById('cpu_speed');
+    const coresInput = document.getElementById(F.CPU_CORES);
+    const speedInput = document.getElementById(F.CPU_SPEED);
     const cpuWrapper = document.getElementById('cpuSearchWrapper');
 
     // Helper to sync split UI to hidden field
@@ -229,29 +166,10 @@ document.addEventListener("DOMContentLoaded", () => {
             cpuWrapper.innerHTML = '';
 
             if (val.length < 1) {
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 cpuWrapper.style.display = 'none';
                 return;
             }
 
-<<<<<<< HEAD
-            const matches = cpuGens.filter(g => g.toLowerCase().includes(val));
-            
-            if (matches.length > 0) {
-                cpuWrapper.innerHTML = matches.map(m => `
-                    <div class="cpu-opt" style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='transparent'">
-                        ${m}
-                    </div>
-                `).join('');
-                cpuWrapper.style.display = 'block';
-
-                // Handle Selection
-                cpuWrapper.querySelectorAll('.cpu-opt').forEach((opt, idx) => {
-                    opt.addEventListener('click', () => {
-                        cpuInput.value = matches[idx];
-                        cpuWrapper.style.display = 'none';
-                    });
-=======
             const matches = cpuKeys.filter(g => g.toLowerCase().includes(val));
 
             if (matches.length > 0) {
@@ -297,7 +215,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     });
                     cpuWrapper.appendChild(item);
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 });
             } else {
                 cpuWrapper.style.display = 'none';
@@ -312,21 +229,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* --- NEW LABEL SUBMISSION (Success Overlay Logic) --- */
     const successOverlay = document.getElementById('successOverlay');
-<<<<<<< HEAD
-    const successMsg     = document.getElementById('successMsg');
-    let lastInsertedId   = null;
-
-    if (newLabelForm) {
-        newLabelForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-=======
     const successMsg = document.getElementById('successMsg');
     let lastInsertedId = null;
 
     if (newLabelForm) {
         newLabelForm.addEventListener('submit', async (e) => {
             e.preventDefault();
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 
             const btn = document.getElementById('submitLabelBtn');
             const originalText = btn.innerHTML;
@@ -345,21 +253,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (result.success) {
                     lastInsertedId = result.data.id;
-                    const name = (formData.get('brand') || '') + ' ' + (formData.get('model') || '');
-<<<<<<< HEAD
-                    
-=======
+                    const name = (formData.get(F.BRAND) || '') + ' ' + (formData.get(F.MODEL) || '');
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                     let msg = `Saved <strong>${name}</strong> to ID #${String(lastInsertedId).padStart(5, '0')}.<br>Profile is ready for printing.`;
                     if (result.data.is_duplicate) {
                         msg = `Found existing profile for <strong>${name}</strong> (ID #${String(lastInsertedId).padStart(5, '0')}).`;
                     }
-<<<<<<< HEAD
-                    
-=======
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                     successMsg.innerHTML = msg;
                     successOverlay.style.display = 'flex';
 
@@ -380,11 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Success Overlay Buttons
-<<<<<<< HEAD
-    if(successOverlay) {
-=======
     if (successOverlay) {
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         // "Print Another" - Now opens the config modal for variety/quantity
         document.getElementById('btnAgain').addEventListener('click', () => {
             if (window.openPrintConfig) window.openPrintConfig(lastInsertedId);
@@ -392,15 +288,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // "Add New Hardware" - Clears form and hides overlay
         document.getElementById('btnReset').addEventListener('click', () => {
-<<<<<<< HEAD
-            const pinLoc     = document.getElementById('pin_location');
-            const locField   = document.getElementById('warehouse_location');
-            const savedLoc   = locField ? locField.value : '';
-=======
             const pinLoc = document.getElementById('pin_location');
-            const locField = document.getElementById('warehouse_location');
+            const locField = document.getElementById(F.LOCATION);
             const savedLoc = locField ? locField.value : '';
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 
             newLabelForm.reset();
 
@@ -410,16 +300,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Ensure RAM/Storage are enabled by default after reset (matching HTML defaults)
-<<<<<<< HEAD
-            if (hasRam)      ramInput.disabled     = !hasRam.checked;
-            if (hasStorage)  storageInput.disabled = !hasStorage.checked;
-=======
             if (typeof hasRam !== 'undefined') ramInput.disabled = !hasRam.checked;
             if (typeof hasStorage !== 'undefined') storageInput.disabled = !hasStorage.checked;
 
             // Reset CPU Prefix Display
             if (prefixDisplay) prefixDisplay.textContent = '';
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 
             successOverlay.style.display = 'none';
         });
@@ -427,11 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* --- NEW CRM CONTACT SUBMISSION --- */
     const newCustomerForm = document.getElementById('newCustomerForm');
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     if (newCustomerForm) {
         newCustomerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -453,11 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (result.success) {
                     alert(`✅ Contact Saved (ID: C-${result.data.customer_id})`);
-<<<<<<< HEAD
-                    newCustomerForm.reset(); 
-=======
                     newCustomerForm.reset();
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
                 } else {
                     alert(`❌ Error: ${result.error}`);
                 }
@@ -472,11 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     /* --- EDIT CRM CONTACT SUBMISSION --- */
     const editCustomerForm = document.getElementById('editCustomerForm');
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     if (editCustomerForm) {
         editCustomerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -513,8 +386,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-<<<<<<< HEAD
-=======
     /* --- PHONE NUMBER FORMATTING (+1 (XXX) XXX-XXXX) --- */
     const phoneInput = document.getElementById('phone');
     if (phoneInput) {
@@ -570,5 +441,5 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 });
+

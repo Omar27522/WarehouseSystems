@@ -67,15 +67,20 @@ try {
         throw new Exception('Selected customer not found in Rolodex.');
     }
 
+    $tier = $customer['tier'] ?? 'Bronze';
+    $discount_rate = ($tier === 'Gold') ? 0.10 : (($tier === 'Silver') ? 0.05 : 0.0);
+    $discount_amt  = $total_price * $discount_rate;
+    $final_total   = $total_price - $discount_amt;
+
     // --- 2. INSERT ORDER INTO orders.sqlite (get order number first) ---
     $stmt_order = $pdo_orders->prepare("
-        INSERT INTO purchase_orders (customer_id, total_qty, total_price, document_path)
-        VALUES (:cid, :qty, :price, :doc_path)
+        INSERT INTO purchase_orders (customer_id, total_qty, total_price, document_path, invoice_status)
+        VALUES (:cid, :qty, :price, :doc_path, 'Active')
     ");
     $stmt_order->execute([
         ':cid'      => $customer_id,
         ':qty'      => $total_qty,
-        ':price'    => $total_price,
+        ':price'    => $final_total,
         ':doc_path' => '' // Filled in after file generation
     ]);
     $order_number = (int)$pdo_orders->lastInsertId();
@@ -221,9 +226,22 @@ try {
         </table:table-row>
         <table:table-row>
           ' . empty_cell(8)
-          . str_cell('TOTAL PRICE')
+          . str_cell('SUBTOTAL')
           . empty_cell(1)
           . num_cell($total_price, '$' . number_format($total_price, 2)) . '
+        </table:table-row>
+        ' . ($discount_amt > 0 ? '
+        <table:table-row>
+          ' . empty_cell(8)
+          . str_cell("DISCOUNT ($tier)")
+          . empty_cell(1)
+          . num_cell(-$discount_amt, '-$' . number_format($discount_amt, 2)) . '
+        </table:table-row>' : '') . '
+        <table:table-row>
+          ' . empty_cell(8)
+          . str_cell('TOTAL PRICE')
+          . empty_cell(1)
+          . num_cell($final_total, '$' . number_format($final_total, 2)) . '
         </table:table-row>
 
       </table:table>';
@@ -282,50 +300,17 @@ try {
     ");
     $stmt_update->execute([':doc' => $relative_doc_path, ':num' => $order_number]);
 
-<<<<<<< HEAD
-=======
-    // --- 6. MARK ITEMS AS SOLD & RECORD HISTORY ---
-    $stmt_mark_sold = $pdo_labels->prepare("
-        UPDATE items SET status = 'Sold', order_id = :onum WHERE id = :id
-    ");
-    $stmt_record_history = $pdo_orders->prepare("
-        INSERT INTO sold_history (order_number, item_id, serial_number, customer_id, brand_model, sale_price)
-        VALUES (:onum, :iid, :sn, :cid, :bm, :price)
-    ");
+    // --- 6. LOGISTICAL SYNC (DISABLED: Labels are master templates and stay in the library) ---
+    // Section removed per user request: Labels in labels.php should not be marked sold.
+    // Sale data is archived in the Orders database.
 
-    foreach ($cart as $group) {
-        // In this unique label system, item_ids usually contains exactly one ID per unit
-        foreach ($group['item_ids'] as $target_id) {
-            // Fetch full record to get serial number and exact model name for history
-            $stmt_fetch_item = $pdo_labels->prepare("SELECT brand, model, serial_number FROM items WHERE id = :id");
-            $stmt_fetch_item->execute([':id' => $target_id]);
-            $item_data = $stmt_fetch_item->fetch(PDO::FETCH_ASSOC);
-
-            if ($item_data) {
-                // Mark in labels.sqlite
-                $stmt_mark_sold->execute([':onum' => $order_number, ':id' => $target_id]);
-
-                // Record in sold_history
-                $stmt_record_history->execute([
-                    ':onum'  => $order_number,
-                    ':iid'   => $target_id,
-                    ':sn'    => $item_data['serial_number'] ?? 'N/A',
-                    ':cid'   => $customer_id,
-                    ':bm'    => $item_data['brand'] . ' ' . $item_data['model'],
-                    ':price' => $group['unit_price']
-                ]);
-            }
-        }
-    }
-
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
     // --- 7. RETURN SUCCESS ---
     send_json_response(true, [
         'order_number' => $order_num_pad,
         'file_name'    => $final_ots_name,
         'file_path'    => $relative_doc_path,
         'total_qty'    => $total_qty,
-        'total_price'  => '$' . number_format($total_price, 2)
+        'total_price'  => '$' . number_format($final_total, 2)
     ]);
 
 } catch (Exception $e) {

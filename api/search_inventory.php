@@ -1,45 +1,29 @@
 <?php
 // api/search_inventory.php
 // GET endpoint: searches labels.sqlite for available warehouse items.
-// Used by the new_order.php cart JS to populate search results.
 header('Content-Type: application/json');
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/hardware_mapping.php';
 
 $response = ['success' => false, 'data' => null, 'error' => null];
 
 try {
+    $F = HW_FIELDS;
     $q = isset($_GET['q']) ? trim($_GET['q']) : '';
-
-    // Build a safe search term
     $search_term = '%' . $q . '%';
 
     $stmt = $pdo_labels->prepare("
-<<<<<<< HEAD
-        SELECT id, brand, model, series, cpu_gen, cpu_details, ram, storage,
-               battery, bios_state, description, warehouse_location, status
+        SELECT id, {$F['BRAND']}, {$F['MODEL']}, {$F['SERIES']}, {$F['CPU_GEN']}, {$F['CPU_DETAILS']}, {$F['RAM']}, {$F['STORAGE']},
+               {$F['BATTERY']}, {$F['BIOS_STATE']}, {$F['DESCRIPTION']}, {$F['LOCATION']}, {$F['STATUS']}
         FROM items
         WHERE (
-            brand       LIKE :q1 OR
-            model       LIKE :q2 OR
-            series      LIKE :q3 OR
-            cpu_gen     LIKE :q4 OR
-            description LIKE :q5
+            {$F['BRAND']}       LIKE :q1 OR
+            {$F['MODEL']}       LIKE :q2 OR
+            {$F['SERIES']}      LIKE :q3 OR
+            {$F['CPU_GEN']}     LIKE :q4 OR
+            {$F['DESCRIPTION']} LIKE :q5
           )
-=======
-        SELECT id, brand, model, series, serial_number, cpu_gen, cpu_details, ram, storage,
-               battery, bios_state, description, warehouse_location, status
-        FROM items
-        WHERE (
-            brand         LIKE :q1 OR
-            model         LIKE :q2 OR
-            series        LIKE :q3 OR
-            serial_number LIKE :sn OR
-            cpu_gen       LIKE :q4 OR
-            description   LIKE :q5
-          )
-        AND status = 'In Warehouse'
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         ORDER BY id DESC
         LIMIT 50
     ");
@@ -48,10 +32,6 @@ try {
         ':q1' => $search_term,
         ':q2' => $search_term,
         ':q3' => $search_term,
-<<<<<<< HEAD
-=======
-        ':sn' => $search_term,
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
         ':q4' => $search_term,
         ':q5' => $search_term,
     ]);
@@ -68,3 +48,4 @@ try {
 
 echo json_encode($response);
 exit;
+?>

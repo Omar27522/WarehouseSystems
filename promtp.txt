@@ -5,29 +5,21 @@ Please review the codebase changes we made during this session.
 1.5 Update all documentation if needed (e.g., DEPLOYMENT.md, ARCHITECTURE.md, etc.).
 2. Identify any new features or next steps we discussed planning.
 3. Update the `PROJECT_CONTEXT.md` and `WorkLog.md` file to accurately reflect these changes, specifically updating the database schemas list, file structures, and the Roadmap checklist as needed.
+4. When Available, Log the last used Hardware ID (#00000) or Order # so the next agent has a direct test case to verify their first changes.
+5. List the next 3 specific steps for the upcoming session (from plan.txt Next Phase tasks).
+
 
 CRITICAL: Do not write any application code right now. Just ensure `PROJECT_CONTEXT.md` remains the single, accurate source of truth so the next AI Agent can pick up exactly where we left off without hallucinating context!
-
 
 ------------
 Read `PROJECT_CONTEXT.md` this is what the codebase is about.
 ------------
-<<<<<<< HEAD
-Phase 7: ⚙️ File Printing
-inside labels.php
-Actions Print opens an external program to print the label. can we print it directly from the browser? this label has to be high quality and should not be stored, as a file. beacuse Creating a file already creates an entry inside the exports directory, correct?
-
-=======
-lets work on Phase 9: 
-🖨️ Thermal Printer Optimization (2x1 Margin-less Templates). the labels are fine as .odt but the generated PDF is not the size needed. I need labels 2x1, and 2 of them in one is the name and another the specs.
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
+lets work on next Phase: 
+@dsa.md 
 Please let me know what it could be, then ask me again, then we can proceed.
 ------------
 ------------
 ------------
 ------------
-<<<<<<< HEAD
-=======
 Status in warehouse for untested, delete sold
->>>>>>> feef29c (feat: Implement initial Warehouse Management System with comprehensive customer, order, and label management, API endpoints, database migrations, and documentation.)
 ------------

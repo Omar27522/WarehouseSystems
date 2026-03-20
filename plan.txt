@@ -1,6 +1,0 @@
-hardware_view.php
-Make Inventory Info have the most important info when available.
-"Incorrect use of <label for=FORM_ELEMENT>"
-"No label associated with a form field"
-Move it at the top of the page on Mobile view
-

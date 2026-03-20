@@ -3,8 +3,10 @@
 header('Content-Type: application/json');
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/hardware_mapping.php';
 
 try {
+    $F = HW_FIELDS;
     $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
     if ($id <= 0) {
         throw new Exception("Valid Item ID is required.");
@@ -20,19 +22,19 @@ try {
     }
 
     // 2. Map and Escape data for XML
-    $brand    = htmlspecialchars($item['brand'] ?? '', ENT_XML1, 'UTF-8');
-    $model    = htmlspecialchars($item['model'] ?? '', ENT_XML1, 'UTF-8');
-    $series   = htmlspecialchars($item['series'] ?? '', ENT_XML1, 'UTF-8');
-    $cpu_gen  = htmlspecialchars($item['cpu_gen'] ?? '', ENT_XML1, 'UTF-8');
-    $cpu_specs= htmlspecialchars($item['cpu_specs'] ?? ($item['cpu_details'] ?? ''), ENT_XML1, 'UTF-8');
-    $cpu_cores= htmlspecialchars($item['cpu_cores'] ?? '', ENT_XML1, 'UTF-8');
-    $cpu_speed= htmlspecialchars($item['cpu_speed'] ?? '', ENT_XML1, 'UTF-8');
-    $ram      = htmlspecialchars($item['ram'] ?? 'None', ENT_XML1, 'UTF-8');
-    $storage  = htmlspecialchars($item['storage'] ?? 'None', ENT_XML1, 'UTF-8');
-    $battery  = (int)($item['battery'] ?? 0) === 1 ? 'YES' : 'NO';
-    $bios_state = htmlspecialchars($item['bios_state'] ?? 'Unknown', ENT_XML1, 'UTF-8');
-    $warehouse_location = htmlspecialchars($item['warehouse_location'] ?? 'Unassigned', ENT_XML1, 'UTF-8');
-    $description = htmlspecialchars($item['description'] ?? 'Untested', ENT_XML1, 'UTF-8');
+    $brand    = htmlspecialchars($item[$F['BRAND']] ?? '', ENT_XML1, 'UTF-8');
+    $model    = htmlspecialchars($item[$F['MODEL']] ?? '', ENT_XML1, 'UTF-8');
+    $series   = htmlspecialchars($item[$F['SERIES']] ?? '', ENT_XML1, 'UTF-8');
+    $cpu_gen  = htmlspecialchars($item[$F['CPU_GEN']] ?? '', ENT_XML1, 'UTF-8');
+    $cpu_specs= htmlspecialchars($item[$F['CPU_SPECS']] ?? ($item[$F['CPU_DETAILS']] ?? ''), ENT_XML1, 'UTF-8');
+    $cpu_cores= htmlspecialchars($item[$F['CPU_CORES']] ?? '', ENT_XML1, 'UTF-8');
+    $cpu_speed= htmlspecialchars($item[$F['CPU_SPEED']] ?? '', ENT_XML1, 'UTF-8');
+    $ram      = htmlspecialchars($item[$F['RAM']] ?? 'None', ENT_XML1, 'UTF-8');
+    $storage  = htmlspecialchars($item[$F['STORAGE']] ?? 'None', ENT_XML1, 'UTF-8');
+    $battery  = (int)($item[$F['BATTERY']] ?? 0) === 1 ? 'YES' : 'NO';
+    $bios_state = htmlspecialchars($item[$F['BIOS_STATE']] ?? 'Unknown', ENT_XML1, 'UTF-8');
+    $warehouse_location = htmlspecialchars($item[$F['LOCATION']] ?? 'Unassigned', ENT_XML1, 'UTF-8');
+    $description = htmlspecialchars($item[$F['DESCRIPTION']] ?? 'Untested', ENT_XML1, 'UTF-8');
 
     // 3. Generate the XML (Multi-page configuration + Quantity Loop)
     $qty = max(1, min(100, (int)($_POST['qty'] ?? 1)));
@@ -45,26 +47,41 @@ try {
 
     $xml_inner = '';
     for ($i = 0; $i < $qty; $i++) {
-        // Label A (Branding)
-        if ($show_a) {
-            $xml_inner .= '<text:p text:style-name="P3">' . $brand . ' ' . $model . ' ' . $series . '</text:p>';
-            if ($show_b || $i < $qty - 1) {
-                $xml_inner .= '<text:p text:style-name="PB"></text:p>';
-            }
+        // --- 1. Branding Title (Unified Heading) ---
+        // Title Line 1: Brand + Model + Series
+        $xml_inner .= '<text:p text:style-name="P3">' . $brand . ' ' . $model . ' ' . $series . '</text:p>';
+        // Title Line 2: CPU Model as requested ("Like part of the title")
+        if ($cpu_specs) {
+            $xml_inner .= '<text:p text:style-name="P3">' . $cpu_specs . '</text:p>';
         }
 
-        // Label B (Specs)
-        if ($show_b) {
-            $xml_inner .= '<text:p text:style-name="Standard">Technical Specifications (' . $cpu_gen_display . ')</text:p>';
-            $xml_inner .= '<text:p text:style-name="Standard">CPU: ' . $cpu_spec_line . '</text:p>';
-            $xml_inner .= '<text:p text:style-name="Standard">RAM: ' . ($ram ? $ram : 'None') . ' | Storage: ' . ($storage ? $storage : 'None') . '</text:p>';
-            $xml_inner .= '<text:p text:style-name="Standard">Battery: ' . ($battery ? 'YES' : 'NO') . ' | BIOS: ' . $bios_state . '</text:p>';
-            $xml_inner .= '<text:p text:style-name="Standard">Loc: ' . $warehouse_location . ' | Cond: ' . $description . '</text:p>';
-            
-            // Add page break only if there is another set coming up
-            if ($i < $qty - 1) {
-                $xml_inner .= '<text:p text:style-name="PB"></text:p>';
-            }
+        // --- 2. Technical Specs (Same Label) ---
+        $xml_inner .= '<text:p text:style-name="Standard">Technical Specifications (' . $cpu_gen_display . ')</text:p>';
+        $xml_inner .= '<text:p text:style-name="Standard">CPU: ' . $cpu_spec_line . '</text:p>';
+        $xml_inner .= '<text:p text:style-name="Standard">RAM: ' . ($ram ? $ram : 'None') . ' | Storage: ' . ($storage ? $storage : 'None') . '</text:p>';
+        $xml_inner .= '<text:p text:style-name="Standard">Battery: ' . ($battery ? 'YES' : 'NO') . ' | BIOS: ' . $bios_state . '</text:p>';
+        $xml_inner .= '<text:p text:style-name="Standard">Loc: ' . $warehouse_location . ' | Cond: ' . $description . '</text:p>';
+
+        // --- 3. Deep Technical Sheet & Identifiers ---
+        // We include S/N and ID universally for warehouse traceability.
+        $serial = htmlspecialchars($item[$F['SERIAL_NUMBER']] ?? 'N/A', ENT_XML1, 'UTF-8');
+        $status = htmlspecialchars($item[$F['STATUS']] ?? 'In Warehouse', ENT_XML1, 'UTF-8');
+        
+        $xml_inner .= '<text:p text:style-name="Standard">S/N: ' . $serial . ' | Status: ' . $status . '</text:p>';
+
+        if ($item[$F['DESCRIPTION']] === 'Refurbished') {
+            $gpu    = htmlspecialchars($item[$F['GPU']] ?? 'Integrated', ENT_XML1, 'UTF-8');
+            $res    = htmlspecialchars($item[$F['SCREEN_RES']] ?? '—', ENT_XML1, 'UTF-8');
+            $os     = htmlspecialchars($item[$F['OS_VERSION']] ?? '—', ENT_XML1, 'UTF-8');
+            $grade  = htmlspecialchars($item[$F['COSMETIC_GRADE']] ?? '—', ENT_XML1, 'UTF-8');
+
+            $xml_inner .= '<text:p text:style-name="Standard">GPU: ' . $gpu . ' | Res: ' . $res . '</text:p>';
+            $xml_inner .= '<text:p text:style-name="Standard">OS: ' . $os . ' | Cosmetic: Grade ' . $grade . '</text:p>';
+        }
+
+        // --- 4. Page Break (ONLY for next label copy) ---
+        if ($i < $qty - 1) {
+            $xml_inner .= '<text:p text:style-name="PB"></text:p>';
         }
     }
 
@@ -128,3 +145,4 @@ try {
     send_json_response(false, null, $e->getMessage());
 }
 ?>
+
