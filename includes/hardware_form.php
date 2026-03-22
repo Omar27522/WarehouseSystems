@@ -39,17 +39,17 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
 
         <div class="form-group">
             <label for="<?= HW_FIELDS['MODEL'] ?>">Main Model (e.g., EliteBook) *</label>
-            <input type="text" id="<?= HW_FIELDS['MODEL'] ?>" name="<?= HW_FIELDS['MODEL'] ?>" required value="<?= htmlspecialchars($item[HW_FIELDS['MODEL']] ?? '') ?>">
+            <input type="text" id="<?= HW_FIELDS['MODEL'] ?>" name="<?= HW_FIELDS['MODEL'] ?>" required value="<?= htmlspecialchars($item[HW_FIELDS['MODEL']] ?? '') ?>" autocomplete="off" spellcheck="false">
         </div>
 
         <div class="form-group">
             <label for="<?= HW_FIELDS['SERIES'] ?>">Series (e.g., 840 G3)</label>
-            <input type="text" id="<?= HW_FIELDS['SERIES'] ?>" name="<?= HW_FIELDS['SERIES'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['SERIES']] ?? '') ?>">
+            <input type="text" id="<?= HW_FIELDS['SERIES'] ?>" name="<?= HW_FIELDS['SERIES'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['SERIES']] ?? '') ?>" autocomplete="off" spellcheck="false">
         </div>
         
         <div class="form-group">
             <label for="<?= HW_FIELDS['SERIAL_NUMBER'] ?>">Serial Number / Asset Tag</label>
-            <input type="text" id="<?= HW_FIELDS['SERIAL_NUMBER'] ?>" name="<?= HW_FIELDS['SERIAL_NUMBER'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['SERIAL_NUMBER']] ?? '') ?>" placeholder="S/N: ...">
+            <input type="text" id="<?= HW_FIELDS['SERIAL_NUMBER'] ?>" name="<?= HW_FIELDS['SERIAL_NUMBER'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['SERIAL_NUMBER']] ?? '') ?>" placeholder="S/N: ..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
 
         <div class="form-group" style="position: relative;">
@@ -70,14 +70,14 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
             <input type="hidden" id="<?= HW_FIELDS['CPU_SPECS'] ?>" name="<?= HW_FIELDS['CPU_SPECS'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['CPU_SPECS']] ?? '') ?>">
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-row-mobile">
             <div class="form-group">
                 <label for="<?= HW_FIELDS['CPU_CORES'] ?>">CPU Cores</label>
-                <input type="text" id="<?= HW_FIELDS['CPU_CORES'] ?>" name="<?= HW_FIELDS['CPU_CORES'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['CPU_CORES']] ?? '') ?>">
+                <input type="text" id="<?= HW_FIELDS['CPU_CORES'] ?>" name="<?= HW_FIELDS['CPU_CORES'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['CPU_CORES']] ?? '') ?>" inputmode="numeric" placeholder="e.g. 4">
             </div>
             <div class="form-group">
                 <label for="<?= HW_FIELDS['CPU_SPEED'] ?>">CPU Speed</label>
-                <input type="text" id="<?= HW_FIELDS['CPU_SPEED'] ?>" name="<?= HW_FIELDS['CPU_SPEED'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['CPU_SPEED']] ?? '') ?>">
+                <input type="text" id="<?= HW_FIELDS['CPU_SPEED'] ?>" name="<?= HW_FIELDS['CPU_SPEED'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['CPU_SPEED']] ?? '') ?>" inputmode="decimal" placeholder="e.g. 2.40">
             </div>
         </div>
     </div>
@@ -86,14 +86,14 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
     <div>
         <h3 class="form-section-header">Internals & Status</h3>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-row-mobile">
             <div class="form-group">
                 <label for="<?= HW_FIELDS['RAM'] ?>">RAM Capacity</label>
-                <input type="text" id="<?= HW_FIELDS['RAM'] ?>" name="<?= HW_FIELDS['RAM'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['RAM']] ?? '') ?>">
+                <input type="text" id="<?= HW_FIELDS['RAM'] ?>" name="<?= HW_FIELDS['RAM'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['RAM']] ?? '') ?>" inputmode="numeric" placeholder="e.g. 16GB">
             </div>
             <div class="form-group">
                 <label for="<?= HW_FIELDS['STORAGE'] ?>">Storage Capacity</label>
-                <input type="text" id="<?= HW_FIELDS['STORAGE'] ?>" name="<?= HW_FIELDS['STORAGE'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['STORAGE']] ?? '') ?>">
+                <input type="text" id="<?= HW_FIELDS['STORAGE'] ?>" name="<?= HW_FIELDS['STORAGE'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['STORAGE']] ?? '') ?>" inputmode="numeric" placeholder="e.g. 512GB">
             </div>
         </div>
 
@@ -120,7 +120,7 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
             </select>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-row-mobile">
             <div class="form-group">
                 <label for="<?= HW_FIELDS['BIOS_STATE'] ?>">BIOS Status</label>
                 <select id="<?= HW_FIELDS['BIOS_STATE'] ?>" name="<?= HW_FIELDS['BIOS_STATE'] ?>">
@@ -130,7 +130,7 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
                 </select>
             </div>
             <div class="form-group">
-                <label for="<?= HW_FIELDS['BATTERY'] ?>">Battery Mode</label>
+                <label for="<?= HW_FIELDS['BATTERY'] ?>">Battery</label>
                 <select id="<?= HW_FIELDS['BATTERY'] ?>" name="<?= HW_FIELDS['BATTERY'] ?>">
                     <option value="1" <?= ($item[HW_FIELDS['BATTERY']] ?? 0) == 1 ? 'selected' : '' ?>>Included</option>
                     <option value="0" <?= ($item[HW_FIELDS['BATTERY']] ?? 0) == 0 ? 'selected' : '' ?>>N/A</option>
@@ -212,6 +212,20 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
 }
 .search-suggestions {
     box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Mobile-First Layout for form rows */
+.form-row-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 480px) {
+    .form-row-mobile {
+        grid-template-columns: 1fr; /* Stack on very small phones if needed, or keep for speed */
+        gap: 0px;
+    }
 }
 </style>
 

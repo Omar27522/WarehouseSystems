@@ -96,6 +96,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 card.style.borderColor = 'var(--border-color)';
                 card.style.background = 'var(--bg-panel)';
             }, 500);
+
+            // AUTO-SCROLL to form on mobile for speed
+            if (window.innerWidth <= 1100) {
+                const formStart = document.querySelector('.form-panel');
+                if (formStart) {
+                    formStart.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
         });
     });
 
@@ -236,10 +244,17 @@ document.addEventListener("DOMContentLoaded", () => {
         newLabelForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const btn = document.getElementById('submitLabelBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Processing...';
-            btn.disabled = true;
+            // Support both Desktop and Mobile buttons
+            const btnDesktop = document.getElementById('submitLabelBtnDesktop');
+            const btnMobile = document.getElementById('submitLabelBtnMobile');
+            
+            const btns = [btnDesktop, btnMobile].filter(b => b !== null);
+            const originalTexts = btns.map(b => b.innerHTML);
+            
+            btns.forEach(b => {
+                b.innerHTML = '⏳ Processing...';
+                b.disabled = true;
+            });
 
             const formData = new FormData(newLabelForm);
 
@@ -273,20 +288,69 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.error("Submission Error:", err);
                 alert(`❌ Network Error: Could not connect to the label engine. (Details: ${err.message})`);
             } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                btns.forEach((b, i) => {
+                    b.innerHTML = originalTexts[i];
+                    b.disabled = false;
+                });
             }
         });
     }
 
     // Success Overlay Buttons
     if (successOverlay) {
-        // "Print Another" - Now opens the config modal for variety/quantity
+        // Quick Print (1 Copy, both pages)
+        document.getElementById('btnQuickPrint').addEventListener('click', async () => {
+            const btn = document.getElementById('btnQuickPrint');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Printing...';
+            btn.disabled = true;
+
+            const fd = new FormData();
+            fd.append('id', lastInsertedId);
+            fd.append('qty', 1);
+            fd.append('print_a', '1');
+            fd.append('print_b', '1');
+            fd.append('mode', 'open');
+
+            try {
+                const res = await fetch('api/reprint_label.php', { method: 'POST', body: fd});
+                const json = await res.json();
+                if (json.success) {
+                    btn.innerHTML = '✅ Sent!';
+                    setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 1500);
+                } else {
+                    alert("Print Error: " + json.error);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert("Network error.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // "Print Config" - Opens the config modal
         document.getElementById('btnAgain').addEventListener('click', () => {
             if (window.openPrintConfig) window.openPrintConfig(lastInsertedId);
         });
 
-        // "Add New Hardware" - Clears form and hides overlay
+        // "Add Another (Same Model)" - Clears only identifiers
+        document.getElementById('btnCloneNext').addEventListener('click', () => {
+            const pinLoc = document.getElementById('pin_location');
+            const snField = document.getElementById(F.SERIAL_NUMBER);
+            const locField = document.getElementById(F.LOCATION);
+
+            if (snField) snField.value = '';
+            
+            // If location isn't pinned, we might want to clear it or keep it? 
+            // Usually, batching means same location. Let's keep location unless they reset.
+            
+            successOverlay.style.display = 'none';
+            if (snField) snField.focus();
+        });
+
+        // "Start Fresh" - Clears everything
         document.getElementById('btnReset').addEventListener('click', () => {
             const pinLoc = document.getElementById('pin_location');
             const locField = document.getElementById(F.LOCATION);
@@ -304,6 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (typeof hasStorage !== 'undefined') storageInput.disabled = !hasStorage.checked;
 
             // Reset CPU Prefix Display
+            const prefixDisplay = document.getElementById('cpu_prefix_display');
             if (prefixDisplay) prefixDisplay.textContent = '';
 
             successOverlay.style.display = 'none';
