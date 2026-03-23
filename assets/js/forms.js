@@ -35,6 +35,26 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
+        const updateDynamicRequirements = (cond) => {
+            const reqFields = [
+                document.getElementById(F.CPU_GEN),
+                document.getElementById(F.RAM),
+                document.getElementById(F.STORAGE)
+            ];
+            reqFields.forEach(f => {
+                if (f) {
+                    const label = document.querySelector(`label[for="${f.id}"]`);
+                    if (cond === 'Refurbished') {
+                        f.setAttribute('required', 'true');
+                        if (label && !label.innerHTML.includes('*')) label.innerHTML += ' <span style="color:var(--text-main);">*</span>';
+                    } else {
+                        f.removeAttribute('required');
+                        if (label) label.innerHTML = label.innerHTML.replace(' <span style="color:var(--text-main);">*</span>', '');
+                    }
+                }
+            });
+        };
+
         conditionSelect.addEventListener('change', (e) => {
             const cond = e.target.value;
 
@@ -46,12 +66,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             updateStatusOptions(cond);
+            updateDynamicRequirements(cond);
         });
 
         // Initialize state without overwriting BIOS defaults
         const initialCond = conditionSelect.value;
         if (technicalSection) technicalSection.style.display = (initialCond === 'Refurbished') ? 'block' : 'none';
         updateStatusOptions(initialCond);
+        updateDynamicRequirements(initialCond);
     }
 
     /* --- PROFILE CLONING LOGIC --- */
@@ -182,6 +204,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (matches.length > 0) {
                 cpuWrapper.style.display = 'block';
+                
+                // Smart Positioning: shift up if not enough space below
+                const rect = cpuInput.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const minSpaceNeeded = Math.min(250, matches.length * 45); // Approximate max height
+                
+                if (spaceBelow < minSpaceNeeded && rect.top > spaceBelow) {
+                    cpuWrapper.classList.add('shift-up');
+                } else {
+                    cpuWrapper.classList.remove('shift-up');
+                }
+
                 matches.forEach(g => {
                     const item = document.createElement('div');
                     item.className = 'search-suggestion-item cpu-opt';
@@ -217,9 +251,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         // 3. Set focus and select
                         if (mainSpecsInput) {
-                            mainSpecsInput.focus();
-                            const len = mainSpecsInput.value.length;
-                            mainSpecsInput.setSelectionRange(len, len);
+                            // On mobile, jumping focus physically shifts the viewport and disrupts the keyboard.
+                            // We completely bypass programmatic focus on narrow screens to stop the screen from violently panning.
+                            if (window.innerWidth > 768) {
+                                mainSpecsInput.focus({ preventScroll: true });
+                                const len = mainSpecsInput.value.length;
+                                mainSpecsInput.setSelectionRange(len, len);
+                            }
                         }
                     });
                     cpuWrapper.appendChild(item);

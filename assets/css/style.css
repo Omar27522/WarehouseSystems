@@ -258,11 +258,11 @@ body {
 .input-group-prefix input {
     border: none !important;
     flex: 1;
+    min-width: 0; /* Prevents flex flex-basis overflow */
     padding: 8px 15px;
     outline: none;
-    font-size: 1rem;
+    font-size: 16px; /* Forces iOS to not zoom in */
     font-weight: 700;
-    width: 100%;
     color: var(--text-main);
 }
 
@@ -781,6 +781,28 @@ h3 {
     background: rgba(255,255,255,0.8);
     padding: 0 4px;
     border-radius: 2px;
+}
+
+/* Smart Options Shift Up */
+.search-suggestions.shift-up {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: 2px !important;
+}
+
+/* Form Validation Logic */
+form:invalid button[type="submit"] {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+    transition: opacity 0.3s ease;
+}
+
+form:valid button[type="submit"] {
+    opacity: 1;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 /* --- Print Media Overrides --- */

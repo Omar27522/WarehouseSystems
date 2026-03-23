@@ -219,7 +219,6 @@ try {
 }
 
 .btn-large {
-    width: 100%;
     height: 56px;
     font-size: 1.1rem;
     font-weight: 800;

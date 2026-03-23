@@ -155,7 +155,7 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
     <div id="technicalSpecsSection" style="grid-column: 1 / -1; margin-top: 10px; <?= $condition !== 'Refurbished' ? 'display:none;' : '' ?>">
         <h3 class="form-section-header" style="color: var(--accent-color);">Deep Technical Sheet</h3>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
             <div class="form-group">
                 <label for="<?= HW_FIELDS['GPU'] ?>">GPU (Video Card)</label>
                 <input type="text" id="<?= HW_FIELDS['GPU'] ?>" name="<?= HW_FIELDS['GPU'] ?>" value="<?= htmlspecialchars($item[HW_FIELDS['GPU']] ?? '') ?>">
@@ -221,10 +221,10 @@ $condition = $item[HW_FIELDS['DESCRIPTION']] ?? 'Untested';
     gap: 12px;
 }
 
+/* Ensure mobile forms stay compact with 2 columns to fit on screen */
 @media (max-width: 480px) {
     .form-row-mobile {
-        grid-template-columns: 1fr; /* Stack on very small phones if needed, or keep for speed */
-        gap: 0px;
+        gap: 8px; /* Tighter gap for better mobile fit */
     }
 }
 </style>
