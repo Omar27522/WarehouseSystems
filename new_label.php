@@ -167,8 +167,39 @@ try {
     </div>
 
     <!-- RECENT LABELS SIDEBAR -->
-    <div class="panel sidebar-panel" style="background: var(--bg-page); border: 1px solid var(--border-color);">
-        <h3 style="margin-bottom: 15px; font-size: 1rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+    <div class="panel sidebar-panel" style="background: var(--bg-page); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- LIVE PREVIEW SECTION -->
+        <div class="live-preview-container">
+            <h3 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--accent-color); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">LIVE</span>
+                Label Preview (2x1)
+            </h3>
+            
+            <div class="label-mockup" id="liveLabelPreview">
+                <div class="label-mockup-header">
+                    <div id="prevBrandModel" class="prev-main">BRAND MODEL</div>
+                    <div id="prevSeriesSpecs" class="prev-sub">SERIES SPECS</div>
+                </div>
+                <div class="label-mockup-grid">
+                    <div class="prev-item">CPU: <span id="prevCpu">i5-8th</span></div>
+                    <div class="prev-item">RAM: <span id="prevRam">16GB</span></div>
+                    <div class="prev-item">SSD: <span id="prevStorage">512GB</span></div>
+                    <div class="prev-item">BATT: <span id="prevBattery">YES</span></div>
+                </div>
+                <div class="label-mockup-footer">
+                    <div id="prevSN">S/N: 000000</div>
+                    <div id="prevCond">UNTESTED</div>
+                </div>
+            </div>
+            <p style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 8px; font-style: italic; text-align: left;">
+                Visual approximation of 2" x 1" thermal output.
+            </p>
+        </div>
+
+        <div class="form-divider" style="margin: 0;"></div>
+
+        <h3 style="margin-bottom: 0px; font-size: 1rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
             Recently Added
             <span style="font-size: 0.7rem; font-weight: normal; background: var(--border-color); padding: 2px 6px; border-radius: 4px;">Clone Tools</span>
         </h3>
@@ -188,9 +219,10 @@ try {
                          data-ram="<?= htmlspecialchars($rl['ram'] ?? '') ?>"
                          data-storage="<?= htmlspecialchars($rl['storage'] ?? '') ?>"
                          title="Click to clone these specs">
-                        <div style="font-weight: 800;"><?= htmlspecialchars($rl['brand'] . ' ' . $rl['model']) ?></div>
-                        <div style="color: var(--text-secondary); font-size: 0.75rem;">
-                            <?= htmlspecialchars($rl['cpu_gen']) ?> | <?= htmlspecialchars($rl['ram']) ?>
+                        <div style="font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= htmlspecialchars(($rl['brand'] ?? '') . ' ' . ($rl['model'] ?? '')) ?></div>
+                        <div style="color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <?= htmlspecialchars(($rl['cpu_gen'] && $rl['cpu_gen'] !== '0') ? $rl['cpu_gen'] : 'Unknown Gen') ?> | 
+                            <?= htmlspecialchars(($rl['ram'] && $rl['ram'] !== '0') ? (stripos($rl['ram'], 'GB') !== false ? $rl['ram'] : $rl['ram'] . 'GB') : 'No RAM') ?>
                         </div>
                         <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-color); padding-top: 8px;">
                             <span style="font-size: 0.7rem; color: var(--accent-color); font-weight: bold;">#<?= str_pad($rl['id'], 5, '0', STR_PAD_LEFT) ?></span>

@@ -1,8 +1,13 @@
 const newLabelForm = document.getElementById('newLabelForm');
+const refurbForm   = document.getElementById('refurbForm');
+const activeForm   = newLabelForm || refurbForm;
 
 document.addEventListener("DOMContentLoaded", () => {
     const F = window.HW_FIELDS;
     if (!F) return; // Guard against missing mapping
+
+    // Make it globally available for other scripts
+    window.refreshPreview = updateLivePreview;
 
     /* --- SECTION TOGGLING (Untested vs Refurbished) --- */
     const conditionSelect = document.getElementById(F.DESCRIPTION);
@@ -119,6 +124,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 card.style.background = 'var(--bg-panel)';
             }, 500);
 
+            // Update preview
+            updateLivePreview();
+
             // AUTO-SCROLL to form on mobile for speed
             if (window.innerWidth <= 1100) {
                 const formStart = document.querySelector('.form-panel');
@@ -138,12 +146,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const speedInput = document.getElementById(F.CPU_SPEED);
     const cpuWrapper = document.getElementById('cpuSearchWrapper');
 
-    // Helper to sync split UI to hidden field
     const syncCpuSpecs = () => {
         if (!specsHidden || !prefixDisplay || !mainSpecsInput) return;
         const prefix = prefixDisplay.textContent.replace('-', '');
         const val = mainSpecsInput.value.trim();
         specsHidden.value = val ? `${prefix}-${val}` : '';
+        
+        // Auto-Fill Cores & Speed if model is recognized
+        // Strip common prefixes like 'i5-' or 'Ryzen 5 ' to match catalog keys
+        let lookup = val.toUpperCase().replace(/^(I[3579]-|RYZEN\s[3579]\s)/, '').trim();
+        
+        if (cpuTechnicalSpecs[lookup]) {
+            if (coresInput) coresInput.value = cpuTechnicalSpecs[lookup].cores;
+            if (speedInput) speedInput.value = cpuTechnicalSpecs[lookup].speed;
+        }
+
+        updateLivePreview(); // Manually trigger preview update since hidden fields don't fire events
     };
 
     if (mainSpecsInput) {
@@ -186,6 +204,64 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // AMD (Single Option)
         "AMD": { gen: "AMD", specs: "AMD-", cores: "", speed: "" }
+    };
+
+    // Specific CPU Details Catalog for Auto-Fill (Triggered by Specs Main Input)
+    const cpuTechnicalSpecs = {
+        // 6th Gen
+        "6200U": { cores: "2 Cores", speed: "2.30 GHz" },
+        "6300U": { cores: "2 Cores", speed: "2.40 GHz" },
+        "6500U": { cores: "2 Cores", speed: "2.50 GHz" },
+        "6600U": { cores: "2 Cores", speed: "2.60 GHz" },
+
+        // 7th Gen
+        "7200U": { cores: "2 Cores", speed: "2.50 GHz" },
+        "7300U": { cores: "2 Cores", speed: "2.60 GHz" },
+        "7500U": { cores: "2 Cores", speed: "2.70 GHz" },
+        "7600U": { cores: "2 Cores", speed: "2.80 GHz" },
+
+        // 8th Gen
+        "8250U": { cores: "4 Cores", speed: "1.60 GHz" },
+        "8350U": { cores: "4 Cores", speed: "1.70 GHz" },
+        "8550U": { cores: "4 Cores", speed: "1.80 GHz" },
+        "8650U": { cores: "4 Cores", speed: "1.90 GHz" },
+        "8265U": { cores: "4 Cores", speed: "1.60 GHz" },
+        "8365U": { cores: "4 Cores", speed: "1.60 GHz" },
+
+        // 10th Gen
+        "10210U": { cores: "4 Cores", speed: "1.60 GHz" },
+        "10310U": { cores: "4 Cores", speed: "1.70 GHz" },
+        "10510U": { cores: "4 Cores", speed: "1.80 GHz" },
+        "10610U": { cores: "4 Cores", speed: "1.80 GHz" },
+        "10710U": { cores: "6 Cores", speed: "1.10 GHz" },
+
+        // 11th Gen
+        "1135G7": { cores: "4 Cores", speed: "2.40 GHz" },
+        "1145G7": { cores: "4 Cores", speed: "2.60 GHz" },
+        "1165G7": { cores: "4 Cores", speed: "2.80 GHz" },
+        "1185G7": { cores: "4 Cores", speed: "3.00 GHz" },
+
+        // 12th Gen
+        "1235U":  { cores: "10 Cores", speed: "1.30 GHz" },
+        "1245U":  { cores: "10 Cores", speed: "1.60 GHz" },
+        "1255U":  { cores: "10 Cores", speed: "1.70 GHz" },
+        "1265U":  { cores: "10 Cores", speed: "1.80 GHz" },
+
+        // Apple Silicon
+        "M1":     { cores: "8 Cores", speed: "3.20 GHz" },
+        "M1 PRO": { cores: "10 Cores", speed: "3.20 GHz" },
+        "M1 MAX": { cores: "10 Cores", speed: "3.20 GHz" },
+        "M2":     { cores: "8 Cores", speed: "3.50 GHz" },
+        "M3":     { cores: "8 Cores", speed: "4.05 GHz" },
+
+        // Common AMD Ryzen
+        "3500U": { cores: "4 Cores", speed: "2.10 GHz" },
+        "3700U": { cores: "4 Cores", speed: "2.30 GHz" },
+        "4500U": { cores: "6 Cores", speed: "2.30 GHz" },
+        "4700U": { cores: "8 Cores", speed: "2.00 GHz" },
+        "5500U": { cores: "6 Cores", speed: "2.10 GHz" },
+        "5700U": { cores: "8 Cores", speed: "1.80 GHz" },
+        "5800U": { cores: "8 Cores", speed: "1.90 GHz" }
     };
 
     const cpuKeys = Object.keys(cpuCatalog);
@@ -394,7 +470,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const locField = document.getElementById(F.LOCATION);
             const savedLoc = locField ? locField.value : '';
 
-            newLabelForm.reset();
+            if (activeForm) {
+                activeForm.reset();
+            }
 
             // Restore location if pinned
             if (pinLoc && pinLoc.checked && locField) {
@@ -544,5 +622,65 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Attach listeners via event delegation on the form itself
+    if (activeForm) {
+        activeForm.addEventListener('input', updateLivePreview);
+        activeForm.addEventListener('change', updateLivePreview);
+    }
+
+    // Run once on load to catch cloned or default data
+    setTimeout(updateLivePreview, 150);
 });
+
+/* --- LIVE PREVIEW ENGINE (Global Scope for resilience) --- */
+function updateLivePreview() {
+    if (typeof window.HW_FIELDS === 'undefined') return;
+    const F = window.HW_FIELDS;
+    
+    const pvBrandModel = document.getElementById('prevBrandModel');
+    const pvSeriesSpecs = document.getElementById('prevSeriesSpecs');
+    const pvCpu = document.getElementById('prevCpu');
+    const pvRam = document.getElementById('prevRam');
+    const pvStorage = document.getElementById('prevStorage');
+    const pvBattery = document.getElementById('prevBattery');
+    const pvSN = document.getElementById('prevSN');
+    const pvCond = document.getElementById('prevCond');
+
+    if (!pvBrandModel) return;
+
+    // Core fields lookup
+    const elBrand = document.getElementById(F.BRAND);
+    const elModel = document.getElementById(F.MODEL);
+    const elSeries = document.getElementById(F.SERIES);
+    const elSpecs = document.getElementById(F.CPU_SPECS);
+    const elRam = document.getElementById(F.RAM);
+    const elStorage = document.getElementById(F.STORAGE);
+    const elBattery = document.getElementById(F.BATTERY);
+    const elSN = document.getElementById(F.SERIAL_NUMBER);
+    const elCond = document.getElementById(F.DESCRIPTION);
+
+    const brand = elBrand ? elBrand.value : '';
+    const model = elModel ? elModel.value : '';
+    const specsHidden = elSpecs ? elSpecs.value : '';
+    const series = elSeries ? elSeries.value : '';
+
+    // Textual display logic
+    pvBrandModel.textContent = (brand || model) ? (brand + ' ' + model).trim() : 'BRAND MODEL';
+    pvSeriesSpecs.textContent = (series || specsHidden) ? (series + ' ' + specsHidden).trim() : 'SERIES SPECS';
+    
+    if (pvCpu) pvCpu.textContent = specsHidden || '—';
+    if (pvRam) pvRam.textContent = elRam ? (elRam.value || '—') : '—';
+    if (pvStorage) pvStorage.textContent = elStorage ? (elStorage.value || '—') : '—';
+    
+    if (pvBattery && elBattery) {
+        if (elBattery.value === '') {
+            pvBattery.textContent = '—';
+        } else {
+            pvBattery.textContent = (elBattery.value == '1') ? 'YES' : 'NO';
+        }
+    }
+    
+    if (pvSN) pvSN.textContent = 'S/N: ' + (elSN ? (elSN.value || 'XXXXXX') : 'XXXXXX');
+    if (pvCond) pvCond.textContent = elCond ? (elCond.value || 'UNTESTED') : 'UNTESTED';
+}
 
