@@ -1,51 +1,85 @@
-# IQA Metal Inventory & Label System
+# 📦 IQA Warehouse Systems
 
-## 1. Project Overview
-This application is a local-network inventory management, hardware label printer, and B2B ordering system. It was built using a "Vibe Coding" philosophy: meaning the architecture prioritizes clean, direct, and unbloated foundations that any future developer or AI agent can immediately understand and build upon without heavy setup overhead.
+[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](https://github.com/)
+[![Tech](https://img.shields.io/badge/Stack-Vanilla_PHP_|_SQLite_|_JS-blue.svg)](https://github.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/)
 
-At its core, the app does three things:
-1. **Labels:** Generates `.odt` printable physical labels for single hardware units (Laptops, Gaming Consoles) and tracks their exact physical location in the warehouse.
-2. **Rolodex:** Manages B2B customer and lead profiles.
-3. **Purchasing & Orders:** Baskets existing hardware units into B2B Purchase Orders, updates their status to "Sold", and generates an `.ots` (OpenDocument Spreadsheet Template) form to send to buyers.
+A premium, high-performance warehouse management ecosystem designed for speed, reliability, and precision. Built for physical warehouse environments where quick hardware intake and accurate label logistics are mission-critical.
 
 ---
 
-## 2. The Tech Stack (Strict Rules)
-To maintain the "Vibe", this project strictly adheres to a native, lightweight stack.
+## 🚀 The Modules
 
-* **Frontend:** Vanilla HTML5, Vanilla CSS3 (Custom roots, flex/grid layouts), and Vanilla JavaScript (ES6+).
-* **Backend:** PHP 8+
-* **Database:** SQLite3 (Using PDO via `includes/db.php`).
-* **Zero Bloat:** **NO** `node_modules`, **NO** Tailwind CSS or Bootstrap, **NO** PHP Frameworks (Laravel), and **NO** Composer packages unless absolutely critical.
+### 🏷️ Inventory Labels (`/labels`)
+*Rapid Hardware Intake & ODT Generation*
+- **Speed Intake**: Optimized forms for rapid technical specs entry.
+- **Thermal Printing**: Generates high-fidelity `.odt` labels via a dependency-free Flat XML engine.
+- **Hardware Specs**: Detailed tracking of CPUs, RAM, Storage, Battery Health, and BIOS status.
+- **Self-Healing**: Native `Schema Guard` ensures database integrity and automatic recovery.
 
-### Why No Composer? (The PowerShell Injection Pattern)
-Handling document generation natively in PHP usually requires heavy libraries like `PhpSpreadsheet`, which demand Composer and create dependency bloat.
-Instead, this project uses **PowerShell Template Injection**. PHP simply generates raw `content.xml` strings containing the user's data and calls local Windows PowerShell scripts to inject that XML securely inside a boilerplate template file (`.odt` or `.ots`). This keeps the repository lightweight and heavily optimized for the host Windows environment.
-
----
-
-## 3. Core Architecture
-The system intentionally splits data across three completely sandboxed SQLite files to ensure separation of concerns and limit the risk of total data corruption:
-
-1. `db/labels.sqlite`: The master inventory of every individual physical item in the warehouse.
-2. `db/orders.sqlite`: The high-level records of B2B purchase forms and their financial totals.
-3. `db/rolodex.sqlite`: The CRM database storing leads, customers, and contact records.
-
-*(See `ARCHITECTURE.md` for the exact schema structures).*
+### 📊 Order Manager (`/orders`)
+*B2B Relationship & Batch Fulfillment*
+- **CRM Hub**: Advanced lead tracking with interaction timelines and status priority.
+- **Batch Logistics**: Manage complex hardware orders with real-time stock allocation.
+- **Warehouse Gates**: Track the operational state of physical zones (Working, Audit, Idle).
+- **Global Registry**: Searchable customer database with session-persistent filters.
 
 ---
 
-## 4. UI Philosophy
-*(See `DESIGN_SYSTEM.md` for exact variables and rules).*
-* The interface should feel like premium software: Dark mode, minimalistic, modern, and highly functional.
-* Forms should be dynamic. If a feature isn't selected, its sub-options shouldn't clog the screen.
-* Operations like database searches (filtering the warehouse) or submitting background forms should utilize JavaScript `fetch()` to prevent full-page reloads and maintain a snappy, native app-like experience.
+## 🛠️ Technology Stack
+
+| Layer | Tech | Description |
+| :--- | :--- | :--- |
+| **Backend** | PHP 8.1+ | Lean, procedural-focused logic with modular routing. |
+| **Database** | SQLite 3 | Zero-config, portable database files with optimistic locking. |
+| **Frontend** | Vanilla JS / CSS3 | Modern "App-like" experience using Glassmorphism & HSL variables. |
+| **Documents** | Flat XML (FODT) | Dependency-free OpenDocument generation for LibreOffice compatibility. |
+| **Automation** | PowerShell | Native Windows integration for direct file launching. |
 
 ---
 
-##  Agent Instructions (Read Before Coding)
-If you are an AI Agent waking up in this repository, follow these steps before writing code:
-1. **Read `ARCHITECTURE.md`** heavily so you don't write bad SQL queries.
-2. **Read `SITEMAP.md`** to know the folder structure and where your new file should go.
-3. **Read `DESIGN_SYSTEM.md`** to ensure your CSS matches the exact vibes of the existing UI.
-4. **Do not install npm or composer packages.** Everything is vanilla.
+## 📂 Project Structure
+
+```text
+├── labels/                # Module: Inventory & Rapid Label Printing
+├── orders/                # Module: CRM, Batching & Fulfillment
+├── DOCS/                  # System-wide Documentation
+│   ├── AI_AGENT_INSTRUCTIONS.md   # Guidelines for AI coding assistants
+│   ├── CODE_REVIEW_CHECKLIST.md   # Quality control standards
+│   └── GLOBAL_SITEMAP.md          # Full project directory map
+├── index.php              # Premium Portal / Landing Page
+└── README.md              # This document
+```
+
+---
+
+## ⚙️ Getting Started
+
+### 1. Requirements
+- **PHP 8.1+** (XAMPP / WAMP recommended for Windows environments).
+- **SQLite3 Extension** enabled in `php.ini`.
+- **LibreOffice** (optional, for viewing/printing generated `.odt` labels).
+
+### 2. Installation
+1. Clone the repository into your web root (e.g., `htdocs/app`).
+2. Ensure the `/db` and `/assets/db` directories have **Write Permissions**.
+3. Access the system via `http://localhost/app/`.
+
+### 3. Usage
+- Start in the **Portal** to choose between label generation or order management.
+- Databases are automatically initialized on the first run via the **Schema Guard** system.
+
+---
+
+## 🔍 Documentation for Reviewers
+If you are an AI assistant or a human code reviewer, please consult the following:
+- [🤖 AI Agent Instructions](DOCS/AI_AGENT_INSTRUCTIONS.md)
+- [🔍 Reviewer Checklist](DOCS/CODE_REVIEW_CHECKLIST.md)
+- [🗺️ Global Sitemap](DOCS/GLOBAL_SITEMAP.md)
+
+---
+
+> [!TIP]
+> Built for durability. Every interaction is audited, every database is self-healing, and every UI element is touch-optimized for warehouse hardware.
+
+&copy; 2026 IQA Metal Inventory Systems

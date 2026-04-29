@@ -1,215 +1,250 @@
-<?php 
-require_once 'includes/db.php';
-require_once 'includes/functions.php';
-require_once 'includes/header.php'; 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IQA Warehouse Systems | Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --accent-green: #8cc63f;
+            --accent-blue: #00a8ff;
+            --text-main: #f0f0f2;
+            --text-dim: #a0a0a5;
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
 
-// Fetch basic stats (This will error if init_db isn't run, handle gracefully)
-$total_inventory = 0;
-$total_sales = "$0.00";
-$total_leads = 0;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-// Health Check
-require_once 'includes/status_functions.php';
-$health = get_system_health($pdo_labels, $pdo_orders, $pdo_rolodex);
+        html, body {
+            height: 100%;
+            height: -webkit-fill-available;
+        }
 
-try {
-    // Inventory Count
-    $stmt = $pdo_labels->query("SELECT COUNT(id) FROM items WHERE status = 'In Warehouse'");
-    $total_inventory = $stmt->fetchColumn();
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: calc(40px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));
+            background: radial-gradient(circle at 50% 50%, #1a1a20 0%, #0a0a0c 100%);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-font-smoothing: antialiased;
+            -webkit-text-size-adjust: 100%;
+        }
 
-    // Sales Output
-    $stmt = $pdo_orders->query("SELECT SUM(total_price) FROM purchase_orders");
-    if($sum = $stmt->fetchColumn()) {
-        $total_sales = format_currency($sum);
-    }
+        .background-blob {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(140, 198, 63, 0.1) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(50px);
+            animation: move 20s infinite alternate;
+        }
 
-    // Lead Counts
-    $stmt = $pdo_rolodex->query("SELECT COUNT(customer_id) FROM customers WHERE lead_status != 'Inactive'");
-    $total_leads = $stmt->fetchColumn();
-} catch (PDOException $e) {
-    // Silent
-}
-?>
+        @keyframes move {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(50%, 50%); }
+        }
 
-<div class="panel" style="margin-bottom: 30px;">
-    <h1 style="font-size: 1.5rem; margin-bottom: 5px;">Worker Dashboard</h1>
-    <p style="color: var(--text-secondary); font-size: 0.9rem;">Quick tools for inventory intake and location tracking.</p>
+        .portal-header {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.8s ease-out;
+            width: 100%;
+            max-width: 600px;
+        }
 
-    <?php if ($health['status'] === 'Critical'): ?>
-        <div style="background: rgba(220,53,69,0.05); border: 2px solid #ef4444; padding: 15px; border-radius: 12px; margin-top: 15px;">
-            <h3 style="color: #ef4444; margin: 0 0 5px 0; font-size: 1rem;">🔴 System Alert</h3>
-            <p style="margin: 0; font-weight: 600; font-size: 0.85rem; color: var(--text-main);">
-                Database issues detected. Contact Admin or check Settings.
-            </p>
-        </div>
-    <?php endif; ?>
-</div>
+        .portal-header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+            background: linear-gradient(to bottom, #fff, #888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-<!-- PHASE 1: ACTION TOOLS (PRIMARY) -->
-<div class="action-grid" style="margin-bottom: 25px;">
-    <!-- Search Widget -->
-    <div class="panel" style="border-left: 5px solid var(--accent-color);">
-        <h2 style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 1.3rem;">🔍</span> Quick Locate
-        </h2>
-        <p style="margin-bottom: 15px; font-size: 0.85rem; color: var(--text-secondary);">Find a laptop's location by ID or Brand.</p>
-        <form id="quickSearchForm" class="flex-between">
-            <input type="text" id="quickSearchId" placeholder="ID, Brand, Model..." required style="flex: 1; margin-right: 10px;">
-            <button type="submit" class="btn btn-primary" style="padding: 0 25px;">Find</button>
-        </form>
-        <div id="quickSearchResult" style="margin-top: 15px;"></div>
-    </div>
-    
-    <!-- Action Widget -->
-    <div class="panel" style="border-left: 5px solid var(--text-main);">
-        <h2 style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 1.3rem;">⚡</span> Quick Actions
-        </h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <a href="new_label.php" class="btn btn-success" style="flex-direction: column; height: auto; padding: 15px; font-size: 0.85rem;">
-                <span style="font-size: 1.5rem; margin-bottom: 5px;">🏷️</span>
-                <span>New Label</span>
-            </a>
-            <a href="new_order.php" class="btn btn-primary" style="flex-direction: column; height: auto; padding: 15px; font-size: 0.85rem; background: var(--text-main);">
-                <span style="font-size: 1.5rem; margin-bottom: 5px;">🛒</span>
-                <span>B2B Form</span>
-            </a>
-        </div>
-    </div>
-</div>
+        .portal-header p {
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            font-weight: 300;
+        }
 
-<!-- PHASE 2: SYSTEM STATS (SECONDARY) -->
-<div class="stat-grid" style="margin-bottom: 30px;">
-    <!-- Hardware -->
-    <div class="panel text-center" style="display: flex; flex-direction: column; justify-content: center; padding: 15px;">
-        <span style="font-size: 0.7rem; text-transform: uppercase; font-weight: 800; color: var(--text-secondary);">Warehouse</span>
-        <p style="font-size: 1.8rem; font-weight: 800; margin: 5px 0;"><?= $total_inventory ?></p>
-        <a href="labels.php" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-color);">View All ➔</a>
-    </div>
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            animation: fadeInUp 0.8s ease-out;
+        }
 
-    <!-- Finances -->
-    <div class="panel text-center" style="display: flex; flex-direction: column; justify-content: center; padding: 15px;">
-        <span style="font-size: 0.7rem; text-transform: uppercase; font-weight: 800; color: var(--text-secondary);">Sales</span>
-        <p style="font-size: 1.8rem; font-weight: 800; margin: 5px 0;"><?= $total_sales ?></p>
-        <a href="orders.php" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-color);">View All ➔</a>
-    </div>
+        .module-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
 
-    <!-- CRM -->
-    <div class="panel text-center" style="display: flex; flex-direction: column; justify-content: center; padding: 15px;">
-        <span style="font-size: 0.7rem; text-transform: uppercase; font-weight: 800; color: var(--text-secondary);">Leads</span>
-        <p style="font-size: 1.8rem; font-weight: 800; margin: 5px 0;"><?= $total_leads ?></p>
-        <a href="rolodex.php" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-color);">View All ➔</a>
-    </div>
-</div>
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
 
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById('nav-dashboard').classList.add('active');
+        .module-card:hover::before {
+            transform: translateX(100%);
+        }
 
-        const quickInput  = document.getElementById('quickSearchId');
-        const resultDiv   = document.getElementById('quickSearchResult');
-        let searchTimer   = null;
+        .module-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            background: rgba(255, 255, 255, 0.05);
+        }
 
-        async function performSearch() {
-            const query = quickInput.value.trim();
+        .icon-box {
+            font-size: 4rem;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+        }
 
-            if (!query) {
-                resultDiv.innerHTML = '';
-                return;
-            }
+        .module-card h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #fff;
+        }
 
-            resultDiv.innerHTML = '<span style="color:var(--text-secondary); font-size:0.85rem;">🔍 Searching…</span>';
+        .module-card p {
+            color: var(--text-dim);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
 
-            try {
-                const res  = await fetch('api/search_item.php?id=' + encodeURIComponent(query));
-                const json = await res.json();
+        .badge {
+            margin-top: 25px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
 
-                if (!json.success) {
-                    resultDiv.innerHTML = `<div style="padding:15px; background:rgba(220,53,69,0.05); border-radius:8px; color:var(--btn-danger-bg); font-size:0.9rem;">⚠ ${json.error}</div>`;
-                    return;
-                }
+        .badge-labels { background: rgba(140, 198, 63, 0.1); color: var(--accent-green); border: 1px solid rgba(140, 198, 63, 0.2); }
+        .badge-orders { background: rgba(0, 168, 255, 0.1); color: var(--accent-blue); border: 1px solid rgba(0, 168, 255, 0.2); }
+        .badge-marketing { background: rgba(191, 0, 255, 0.1); color: #bf00ff; border: 1px solid rgba(191, 0, 255, 0.2); }
 
-                const results    = json.data.results;
-                const orderInfo  = json.data.order_info;
-                const isSingle   = json.data.is_single;
+        .footer-note {
+            margin-top: 40px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-weight: 300;
+            opacity: 0.5;
+            text-align: center;
+        }
 
-                let html = '';
-
-                results.forEach((item, index) => {
-                    const statusColor = item.status === 'Sold'    ? 'var(--btn-danger-bg)'
-                                      : item.status === 'Pending' ? '#f39c12'
-                                      : 'var(--btn-success-bg)';
-
-                    const condColor   = item.description === 'For Parts'    ? 'var(--btn-danger-bg)'
-                                      : item.description === 'Refurbished'  ? 'var(--btn-success-bg)'
-                                      : '#f39c12';
-
-                    let orderHtml = '';
-                    // Only show detailed order info for the first/main result
-                    if (index === 0 && orderInfo) {
-                        const docLink = orderInfo.document_path
-                            ? `<button onclick="launchFile('${orderInfo.document_path}')" class="btn" style="background:var(--accent-color); color:#fff; font-weight:bold; margin-top:5px; font-size:0.75rem; padding:5px 10px;">🚀 Open Order Form</button>`
-                            : '';
-                        orderHtml = `
-                            <div style="margin-top:10px;padding:12px;background:rgba(0,0,0,0.03);border-radius:6px;font-size:0.85rem;color:var(--text-secondary);">
-                                🤝 Sold on <strong style="color:var(--text-main);">${orderInfo.order_number}</strong>
-                                to <strong style="color:var(--accent-color);">${orderInfo.company_name}</strong>
-                                (${orderInfo.contact_person}) &nbsp;·&nbsp; ${orderInfo.order_date.substring(0,10)}
-                                <div style="margin-top:5px;">${docLink}</div>
-                            </div>`;
-                    }
-
-                    html += `
-                        <div style="background:var(--bg-page); border:1px solid var(--border-color); border-radius:var(--border-radius); padding:14px 16px; margin-bottom:10px; transition: all 0.2s; ${index > 0 ? 'opacity:0.7; transform:scale(0.98);' : ''}">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                                <span style="font-weight:bold;font-size:${index === 0 ? '1.1rem' : '1rem'};color:var(--accent-color);">
-                                    #${String(item.id).padStart(5,'0')} — ${item.brand} ${item.model} ${item.series ?? ''}
-                                </span>
-                                <span style="background:${statusColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:bold;text-transform:uppercase;">
-                                    ${item.status}
-                                </span>
-                            </div>
-                            <div style="display:flex;gap:15px;flex-wrap:wrap;font-size:0.85rem;color:var(--text-secondary); margin-bottom:12px;">
-                                <span title="CPU">🧠 ${item.cpu_gen ?? '—'}</span>
-                                <span title="RAM/Storage">💾 ${item.ram ?? 'No RAM'} / ${item.storage ?? 'No Storage'}</span>
-                                <span title="Location">📍 <strong style="color:var(--text-main);">${item.warehouse_location ?? 'Unassigned'}</strong></span>
-                                <span style="background:${condColor};color:#fff;padding:1px 6px;border-radius:3px;font-size:0.75rem;font-weight:bold;">${item.description ?? '—'}</span>
-                            </div>
-
-                            <div class="action-strip" style="justify-content: flex-start; margin-bottom: 10px;">
-                                <button onclick="window.openPrintConfig(${item.id})" class="btn" title="Print/Config Label">🖨️ Print</button>
-                                <button onclick="flashOpenLabel(${item.id}, '${item.brand}', '${item.model}', this)" class="btn" title="Open Label">📂 Open</button>
-                                <a href="hardware_view.php?id=${item.id}" class="btn">✏️ Edit</a>
-                            </div>
-
-                            ${orderHtml}
-                        </div>`;
-                });
-
-                if (!isSingle) {
-                    html = `<div style="margin-bottom:10px;font-size:0.8rem;color:var(--text-secondary);font-style:italic;">Top ${results.length} results matching your search:</div>` + html;
-                }
-
-                resultDiv.innerHTML = html;
-
-            } catch (err) {
-                resultDiv.innerHTML = '<span style="color:var(--btn-danger-bg); font-size:0.85rem;">⚠ Network error. Check server connection.</span>';
+        @media (min-height: 800px) {
+            .footer-note {
+                position: fixed;
+                bottom: calc(30px + env(safe-area-inset-bottom));
             }
         }
 
-        // Live search on input
-        quickInput.addEventListener('input', () => {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(performSearch, 300);
-        });
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-        // Submit also triggers search immediately
-        document.getElementById('quickSearchForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            clearTimeout(searchTimer);
-            performSearch();
-        });
-    });
-</script>
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-<?php require_once 'includes/footer.php'; ?>
+        @media (max-width: 768px) {
+            .module-grid { 
+                grid-template-columns: 1fr; 
+                gap: 20px;
+            }
+            .portal-header h1 { font-size: 2.5rem; }
+            .portal-header p { font-size: 1rem; }
+            .module-card { padding: 30px 20px; }
+            .icon-box { font-size: 3rem; margin-bottom: 15px; }
+            body { justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-blob"></div>
+
+    <header class="portal-header">
+        <h1>Warehouse Systems </h1><h2>By</h2><h3>IQA Metal</h3>
+        <p>Intelligent inventory management & rapid label logistics.</p>
+    </header>
+
+    <main class="module-grid">
+        <!-- LABELS MODULE -->
+        <a href="labels/index.php" class="module-card">
+            <div class="icon-box">🏷️</div>
+            <h2>Inventory Labels</h2>
+            <p>Rapid hardware intake terminal with ODT thermal label generation and technical sheet management.</p>
+            <div class="badge badge-labels">Module Active</div>
+        </a>
+
+        <!-- ORDERS MODULE -->
+        <a href="orders/index.php" class="module-card">
+            <div class="icon-box">📊</div>
+            <h2>Order Manager</h2>
+            <p>Comprehensive CRM, batch fulfillment, and customer registry with advanced warehouse location tracking.</p>
+            <div class="badge badge-orders">Module Active</div>
+        </a>
+
+        <!-- MARKETING MODULE -->
+        <a href="marketing/index.php" class="module-card">
+            <div class="icon-box">📣</div>
+            <h2>Marketing Hub</h2>
+            <p>Lead generation, campaign tracking, and outreach automation for B2B expansion.</p>
+            <div class="badge badge-marketing">Module Initialized</div>
+        </a>
+    </main>
+
+    <footer class="footer-note">
+        IQA Metal Inventory System &copy; 2026 | Powered by AI-Optimized Structural Surgery
+    </footer>
+
+</body>
+</html>
