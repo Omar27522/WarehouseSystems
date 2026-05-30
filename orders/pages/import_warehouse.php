@@ -12,10 +12,10 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['inventory_csv'])) {
     $file = $_FILES['inventory_csv'];
-    
+
     if ($file['error'] === UPLOAD_ERR_OK) {
         $handle = fopen($file['tmp_name'], 'r');
-        
+
         if ($handle !== false) {
             $header = fgetcsv($handle);
             if ($header) {
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['inventory_csv'])) {
                 foreach ($header as $index => $col) {
                     $mapping[trim(strtolower($col))] = $index;
                 }
-                
+
                 $count = 0;
                 $conn_wh->beginTransaction();
                 try {
@@ -34,10 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['inventory_csv'])) {
                         $qty   = (int)($data[$mapping['qty']] ?? $data[$mapping['quantity']] ?? 0);
                         $loc   = $data[$mapping['location']] ?? $data[$mapping['location_code']] ?? 'ZONE-X';
                         $sector = $data[$mapping['type']] ?? $data[$mapping['sector']] ?? 'Laptops';
-                        
+
                         // Intelligent Specs Construction for Laptops
                         $specs = [];
-                        
+
                         // Handle "CPU / Gen" split or mapping
                         $cpu_gen = $data[$mapping['cpu / gen']] ?? $data[$mapping['cpu/gen']] ?? '';
                         if ($cpu_gen) {
@@ -68,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['inventory_csv'])) {
                                 }
                             }
                         }
-                        
+
                         $specs_json = json_encode($specs);
-                        
-                        $stmt = $conn_wh->prepare("INSERT INTO inventory (user_owner, sector, location_code, brand, model, specs_json, quantity, last_updated_by) 
+
+                        $stmt = $conn_wh->prepare("INSERT INTO inventory (user_owner, sector, location_code, brand, model, specs_json, quantity, last_updated_by)
                                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([$current_user, $sector, $loc, $brand, $model, $specs_json, $qty, $current_user]);
                         $count++;
