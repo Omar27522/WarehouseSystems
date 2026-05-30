@@ -1,6 +1,8 @@
 <?php
 // includes/header.php
 // This snippet forms the top half of the HTML document and persistent Sidebar menu.
+require_once __DIR__ . '/../../core/Security.php';
+Security::init();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -9,6 +11,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
     <title>TEST ENVIROMENT</title>
 
+    <!-- Global UI & Components -->
+    <?php require_once __DIR__ . '/../../core/UI.php'; ?>
+    <link rel="stylesheet" href="../assets/css/components.css">
+    
     <!-- Global CSS Variables & Layout Rules -->
     <link rel="stylesheet" href="assets/css/style.css">
 
@@ -20,6 +26,7 @@
     <!-- Optional: A nice system font hook if desired later. Using system-ui fallbacks in CSS for now -->
 </head>
 <body class="safe-area-bottom">
+    <?= UI::theme_toggle() ?>
 
 <!-- THE CHECKBOX HACK -->
 <input type="checkbox" id="nav-toggle" hidden>

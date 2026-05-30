@@ -40,6 +40,11 @@ async function handlePrintManifest() {
     const formData = new FormData(form);
     formData.set('action', 'update_items');
     formData.set('finalize_status', 'true');
+    // Ensure CSRF token is included if not already in FormData
+    if (!formData.has('csrf_token')) {
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl) formData.set('csrf_token', csrfEl.value);
+    }
 
     const printBtn = document.querySelector('.btn-print-action');
     if (!printBtn) return;
@@ -115,7 +120,7 @@ function downloadCSV() {
         const qtyIn = row.querySelector('.qty-input');
         const priceIn = row.querySelector('.price-input');
 
-        const liveQty = qtyIn ? parseInt(qtyIn.value) || 0 : 0;
+        const liveQty = qtyIn ? parseFloat(qtyIn.value) || 0 : 0;
         const livePrice = priceIn ? parseFloat(priceIn.value) || 0 : 0;
         const rowTotal = liveQty * livePrice;
 
@@ -305,6 +310,10 @@ async function saveItemChanges() {
 
     const formData = new FormData();
     formData.append('action', 'save_single_item');
+    
+    const csrfEl = document.querySelector('input[name="csrf_token"]');
+    if (csrfEl) formData.append('csrf_token', csrfEl.value);
+
     formData.append('item_id', getVal('modal-item-id'));
     formData.append('brand', getVal('modal-brand'));
     formData.append('model', getVal('modal-model'));
@@ -346,7 +355,7 @@ async function saveItemChanges() {
             if (state.rawItems && state.rawItems[idx]) {
                 Object.assign(state.rawItems[idx], {
                     brand, model, series, cpu, description: desc,
-                    quantity: parseInt(qty), unit_price: price
+                    quantity: parseFloat(qty), unit_price: price
                 });
             }
 
@@ -400,6 +409,7 @@ function printLabel() {
     form.action = 'generate_odt.php';
 
     const fields = {
+        'csrf_token': document.querySelector('input[name="csrf_token"]')?.value || '',
         'brand': getVal('modal-brand'),
         'model': getVal('modal-model'),
         'series': getVal('modal-series'),

@@ -1,5 +1,6 @@
 <?php 
 require_once 'core/database.php';
+require_once __DIR__ . '/../core/UI.php';
 include 'core/auth.php'; 
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -17,9 +18,36 @@ try {
     $conn_items = Database::orders();
     $conn_cust = Database::customers();
 
+    // 1. Fetch customer details
+    $stmt = $conn_cust->prepare("SELECT * FROM customers WHERE customer_id = ?");
+    $stmt->execute([$customer_id]);
+    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // 2. Determine active order ID
+    $active_order_id = $_GET['order_id'] ?? $_POST['order_id'] ?? null;
+    if (!$active_order_id) {
+        $stmt = $conn_items->prepare("SELECT order_id FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 1");
+        $stmt->execute([$customer_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $active_order_id = $row['order_id'] ?? 'ORD-DEFAULT';
+    }
+
+    // 3. Fetch order details (specifically for the date)
+    $stmt_o = $conn_items->prepare("SELECT * FROM orders WHERE customer_id = ? AND order_id = ?");
+    $stmt_o->execute([$customer_id, $active_order_id]);
+    $order_data = $stmt_o->fetch(PDO::FETCH_ASSOC);
+    $order_display_date = $order_data ? date('M d, Y', strtotime($order_data['created_at'])) : date('M d, Y');
+
+    // --- HANDLE POST ACTIONS ---
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        if (!Security::validate($_POST['csrf_token'] ?? '')) {
+            die("Security Error: CSRF Token Invalid.");
+        }
+    }
+
     // Handle Order Transfer
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'transfer_order') {
-        $order_id = $_POST['order_id'];
+        $order_id = $_POST['order_id'] ?? $active_order_id;
         $new_customer_id = $_POST['new_customer_id'];
 
         // Update orders table
@@ -36,7 +64,7 @@ try {
 
     // Handle Full Item Metadata & Finalization
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        $order_id = $_GET['order_id'] ?? ($_POST['order_id'] ?? 'ORD-DEFAULT');
+        $order_id = $active_order_id; 
 
         // Check if it's a specific single item update (Modal Save) or bulk save
         if (isset($_POST['action']) && $_POST['action'] === 'save_single_item') {
@@ -46,7 +74,7 @@ try {
                 WHERE id = ? AND customer_id = ?");
             $stmt->execute([
                 $_POST['brand'], $_POST['model'], $_POST['series'], $_POST['cpu'], $_POST['description'],
-                (int)$_POST['quantity'], (float)$_POST['unit_price'], (int)$_POST['item_id'], $customer_id
+                (float)$_POST['quantity'], (float)$_POST['unit_price'], (int)$_POST['item_id'], $customer_id
             ]);
             echo json_encode(['status' => 'success']);
             exit();
@@ -58,8 +86,18 @@ try {
 
         $stmt = $conn_items->prepare("UPDATE items SET unit_price = ?, quantity = ? WHERE id = ? AND customer_id = ?");
         foreach($prices as $id => $val) {
-            $qty = (int)($qtys[$id] ?? 0);
+            $qty = (float)($qtys[$id] ?? 0);
             $stmt->execute([(float)$val, $qty, (int)$id, $customer_id]);
+        }
+
+        // Update Order Date if provided
+        if (isset($_POST['order_date'])) {
+            // Use time from existing record or fallback to current time
+            $existing_time = $order_data ? date('H:i:s', strtotime($order_data['created_at'])) : date('H:i:s');
+            $new_date = $_POST['order_date'] . ' ' . $existing_time;
+            
+            $stmt_od = $conn_items->prepare("UPDATE orders SET created_at = ? WHERE order_id = ?");
+            $stmt_od->execute([$new_date, $order_id]);
         }
 
         // 2. Determine if we should also finalize the status
@@ -83,27 +121,6 @@ try {
             header("Location: " . $_SERVER['PHP_SELF'] . "?customer_id=" . urlencode($customer_id) . "&order_id=" . urlencode($order_id));
         }
         exit();
-    }
-
-    // Migration Check (for order_id support)
-    $cols = $conn_items->query("PRAGMA table_info(items)")->fetchAll(PDO::FETCH_ASSOC);
-    $has_id = false;
-    foreach($cols as $c) if ($c['name'] === 'order_id') $has_id = true;
-    if (!$has_id) $conn_items->exec("ALTER TABLE items ADD COLUMN order_id TEXT NOT NULL DEFAULT 'ORD-DEFAULT'");
-
-    // Fetch customer details
-    $stmt = $conn_cust->prepare("SELECT * FROM customers WHERE customer_id = ?");
-    $stmt->execute([$customer_id]);
-    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Fetch items for specific order_id (with fallback to latest order for the account)
-    $active_order_id = $_GET['order_id'] ?? null;
-    
-    if (!$active_order_id) {
-        $stmt = $conn_items->prepare("SELECT order_id FROM orders WHERE customer_id = ? ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$customer_id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $active_order_id = $row['order_id'] ?? 'ORD-DEFAULT';
     }
 
     $stmt = $conn_items->prepare("SELECT * FROM items WHERE customer_id = ? AND order_id = ? ORDER BY id ASC");
@@ -136,7 +153,9 @@ try {
         <h1 class="print-only" style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Order Manifest</h1>
 
         <div class="header-success no-print" style="text-align: center; margin-bottom: 30px;">
-            <div class="icon-check">✓</div>
+            <a href="index.php" onclick="return confirm('Are you sure you want to leave checkout? Any unsaved changes on this manifest will be lost.')" style="text-decoration: none; display: inline-block; outline: none; -webkit-tap-highlight-color: transparent;">
+                <div class="icon-check" style="cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='scale(1.1)';" onmouseout="this.style.transform='scale(1)';">✓</div>
+            </a>
             <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Final Batch Verification</h1>
             <p class="subtitle">Review quantities and pricing for this manifest before final submission.</p>
             <div style="margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto;">
@@ -144,23 +163,30 @@ try {
             </div>
         </div>
 
-        <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div>
-                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px;">Billing Account</div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="font-weight: 700; color: var(--text-main); font-size: 1.1rem;"><?= htmlspecialchars($customer['company_name'] ?? 'Account Not Found') ?></div>
-                    <button type="button" onclick="openTransferModal()" class="no-print" style="background: #f1f5f9; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer; color: #475569;">
-                        ⇄ Transfer
-                    </button>
+        <form method="POST" id="checkout-form">
+            <?= UI::csrf_field() ?>
+            <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px;">Billing Account</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="font-weight: 700; color: var(--text-main); font-size: 1.1rem;"><?= htmlspecialchars($customer['company_name'] ?? 'Account Not Found') ?></div>
+                        <button type="button" onclick="openTransferModal()" class="no-print" style="background: #f1f5f9; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer; color: #475569;">
+                            ⇄ Transfer
+                        </button>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px;">Order Date</div>
+                    <div class="no-print">
+                        <input type="date" name="order_date" value="<?= date('Y-m-d', strtotime($order_data['created_at'] ?? 'now')) ?>" style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; background: white; cursor: pointer; text-align: right;">
+                        <input type="hidden" name="order_id" value="<?= htmlspecialchars($active_order_id) ?>">
+                    </div>
+                    <div class="print-only" style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">
+                        <?= htmlspecialchars($order_display_date) ?>
+                    </div>
                 </div>
             </div>
-            <div style="text-align: right;">
-                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px;">Order Date</div>
-                <div style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"><?= date('M d, Y') ?></div>
-            </div>
-        </div>
 
-        <form method="POST" id="checkout-form">
             <input type="hidden" name="action" value="update_items">
             <table class="receipt-table">
                 <thead>
@@ -177,7 +203,7 @@ try {
                     $grand_total = 0;
                     if (count($items) > 0):
                         foreach($items as $index => $item):
-                            $qty = $item['quantity'];
+                            $qty = (float)$item['quantity'];
                             $price = $item['unit_price'] ?? 0;
                             $subtotal = $qty * $price;
                             $total_items += $qty;
@@ -196,8 +222,8 @@ try {
                             </div>
                         </td>
                         <td class="col-qty" style="text-align: center;">
-                            <span class="print-only" style="font-weight: 700;"><?= (int)$qty ?></span>
-                            <input type="number" name="quantities[<?= $item['id'] ?>]" aria-label="Item Quantity" value="<?= (int)$qty ?>" min="1" class="qty-input no-print" oninput="recalculateTotals()" style="width: 70px; text-align: center; height: 38px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 700;">
+                            <span class="print-only" style="font-weight: 700;"><?= (float)$qty ?></span>
+                            <input type="number" name="quantities[<?= $item['id'] ?>]" aria-label="Item Quantity" value="<?= (float)$qty ?>" step="any" min="0" class="qty-input no-print" oninput="recalculateTotals()" style="width: 70px; text-align: center; height: 38px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 700;">
                         </td>
                         <td class="col-price" style="text-align: right;">
                             <span class="print-only">$<?= number_format($price, 2) ?></span>
@@ -219,7 +245,7 @@ try {
                     <tr class="row-total">
                         <td class="total-label" style="padding-left: 0; font-weight: 800;">Total Amount Due</td>
                         <td class="total-qty" style="text-align: center; font-weight: 800; color: var(--text-main);">
-                            <span id="total-qty-display"><?= (int)$total_items ?></span>
+                            <span id="total-qty-display"><?= (float)$total_items ?></span>
                         </td>
                         <td class="total-empty"></td>
                         <td class="total-amount" style="text-align: right; color: var(--accent-color); padding-right: 0; font-weight: 800;">
@@ -254,7 +280,7 @@ try {
             'rawItems' => $items,
             'customerName' => $customer['company_name'] ?? 'Account',
             'orderID' => $active_order_id,
-            'orderDate' => date('M d, Y')
+            'orderDate' => $order_display_date
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
         </script>
         <script>
@@ -308,7 +334,7 @@ try {
                 </div>
                 <div class="form-group">
                     <label for="modal-qty">Quantity</label>
-                    <input type="number" id="modal-qty">
+                    <input type="number" id="modal-qty" step="any" min="0">
                 </div>
                 <div class="form-group">
                     <label for="modal-price">Unit Price ($)</label>
@@ -341,6 +367,7 @@ try {
             <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px;">Relocate this entire order and all its items to a different customer account.</p>
             
             <form method="POST">
+                <?= UI::csrf_field() ?>
                 <input type="hidden" name="action" value="transfer_order">
                 <input type="hidden" name="order_id" value="<?= htmlspecialchars($active_order_id) ?>">
                 

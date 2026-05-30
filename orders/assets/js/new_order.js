@@ -55,6 +55,29 @@ function initSummarySearch() {
     }
 }
 
+/**
+ * Simple Tag Writer: Appends clicked keyword to description field.
+ */
+function toggleDescriptionKeyword(keyword) {
+    const descArea = document.getElementById('description');
+    if (!descArea) return;
+
+    let val = descArea.value.trim();
+    if (val) {
+        if (val.endsWith(',')) {
+            descArea.value = val + ' ' + keyword;
+        } else {
+            descArea.value = val + ', ' + keyword;
+        }
+    } else {
+        descArea.value = keyword;
+    }
+    descArea.focus();
+    descArea.dispatchEvent(new Event('input'));
+}
+
+window.toggleDescriptionKeyword = toggleDescriptionKeyword;
+
 /* ============================================================
    3. Summary & Item Actions
    ============================================================ */
@@ -105,14 +128,17 @@ function toggleInlineEdit(btn) {
     const row = btn.closest('tr');
     if (!row) return;
 
-    const staticView = row.querySelector('.static-view');
-    const editView = row.querySelector('.edit-view');
+    const staticViews = row.querySelectorAll('.static-view');
+    const editViews = row.querySelectorAll('.edit-view');
 
-    if (staticView && editView) {
-        const isEditing = staticView.style.display === 'none';
-        staticView.style.display = isEditing ? 'flex' : 'none';
-        editView.style.display = isEditing ? 'none' : 'block';
+    if (staticViews.length > 0 && editViews.length > 0) {
+        const isEditing = staticViews[0].style.display === 'none';
+        
+        staticViews.forEach(v => v.style.display = isEditing ? 'flex' : 'none');
+        editViews.forEach(v => v.style.display = isEditing ? 'none' : 'block');
+        
         btn.style.opacity = isEditing ? '0.3' : '1';
+        btn.innerHTML = isEditing ? '✏️' : '❌'; // Toggle icon to close/cancel
     }
 }
 
@@ -120,16 +146,13 @@ function toggleInlineEdit(btn) {
  * Filters the current order summary table
  */
 function filterSummary() {
-    const input = document.getElementById('summary-search');
-    if (!input) return;
-
-    const filter = input.value.toLowerCase();
-    const rows = document.getElementsByClassName('summary-item-row');
-
-    for (let i = 0; i < rows.length; i++) {
-        const text = rows[i].innerText.toLowerCase();
-        rows[i].style.display = text.includes(filter) ? "" : "none";
-    }
+    const queryEl = document.getElementById('summary-search');
+    const query = queryEl ? queryEl.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('.summary-row');
+    rows.forEach(row => {
+        const text = row.getAttribute('data-search') || '';
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
 }
 
 /* ============================================================
@@ -216,8 +239,9 @@ function selectWarehouseItem(item) {
     const descEl = document.getElementById('description');
 
     if (brandEl) {
-        // Modernized Selection: Find matching option case-insensitively
-        const options = Array.from(brandEl.options);
+        // Modernized Selection: Find matching option case-insensitively from brand-options datalist
+        const brandOptionsEl = document.getElementById('brand-options');
+        const options = brandOptionsEl ? Array.from(brandOptionsEl.options) : [];
         const match = options.find(opt => opt.value.toLowerCase() === (item.brand || "").toLowerCase());
 
         if (match) {
@@ -225,11 +249,10 @@ function selectWarehouseItem(item) {
         } else {
             // Check for partial matches (e.g., "Microsoft Gaming" -> "Microsoft", "HP Laptop" -> "HP")
             const partialMatch = options.find(opt => opt.value.length >= 2 && (item.brand || "").toLowerCase().includes(opt.value.toLowerCase()));
-            brandEl.value = partialMatch ? partialMatch.value : "Other";
+            brandEl.value = partialMatch ? partialMatch.value : (item.brand || "Other");
         }
 
         // IMPORTANT: Manually trigger the change event to populate datalists (models/series options)
-        // This will clear the model/series inputs but that's fine as we set them immediately after.
         brandEl.dispatchEvent(new Event('change'));
     }
 
@@ -279,5 +302,57 @@ function selectWarehouseItem(item) {
             }, 2000);
         }
     });
+}
+
+/**
+ * Repeats the last successful entry by populating the form from injected JSON state.
+ */
+function repeatLastItem() {
+    const stateEl = document.getElementById('lastItemState');
+    if (!stateEl) return;
+
+    try {
+        const data = JSON.parse(stateEl.textContent);
+        
+        const fields = {
+            'brand': data.brand,
+            'models': data.models,
+            'series': data.series,
+            'cpu': data.cpu,
+            'description': data.description,
+            'qty': data.qty,
+            'price': data.price
+        };
+
+        const brandEl = document.getElementById('brand');
+        if (brandEl && fields.brand) {
+            brandEl.value = fields.brand;
+            // Trigger change to populate datalists
+            brandEl.dispatchEvent(new Event('change'));
+        }
+
+        // Populate other fields
+        Object.entries(fields).forEach(([id, value]) => {
+            if (id === 'brand') return; // Already handled
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        });
+
+        // Add highlight effect
+        Object.keys(fields).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.borderColor = 'var(--accent-color)';
+                el.style.boxShadow = '0 0 0 4px rgba(140, 198, 63, 0.2)';
+                setTimeout(() => {
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
+                }, 1500);
+            }
+        });
+
+    } catch (e) {
+        console.error("Error repeating last item:", e);
+    }
 }
 

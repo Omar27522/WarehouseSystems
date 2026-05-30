@@ -5,13 +5,17 @@ function filterOrders() {
     const input = document.getElementById('order-search');
     if (!input) return;
 
-    const filter = input.value.toLowerCase();
+    const terms = input.value.toLowerCase().split(' ').filter(t => t.trim() !== '');
     const rows = document.getElementsByClassName('order-row');
     let hasResults = false;
 
     for (let i = 0; i < rows.length; i++) {
-        const searchBlob = rows[i].getAttribute('data-search') || "";
-        if (searchBlob.includes(filter)) {
+        const searchBlob = (rows[i].getAttribute('data-search') || "").toLowerCase();
+        
+        // Every term must be present (AND logic)
+        const isMatch = terms.every(term => searchBlob.includes(term));
+
+        if (isMatch) {
             rows[i].style.display = "";
             hasResults = true;
         } else {
@@ -94,6 +98,9 @@ async function updateOrderStatus(select, orderId) {
         const formData = new FormData();
         formData.append('order_id', orderId);
         formData.append('new_status', newStatus);
+        
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl) formData.append('csrf_token', csrfEl.value);
 
         const response = await fetch('api/update_order_status.php', {
             method: 'POST',
@@ -138,6 +145,9 @@ async function transferOrder(event) {
         submitBtn.innerText = 'Transferring...';
 
         const formData = new FormData(form);
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl && !formData.has('csrf_token')) formData.append('csrf_token', csrfEl.value);
+        
         const response = await fetch('api/transfer_order.php', {
             method: 'POST',
             body: formData
@@ -159,3 +169,124 @@ async function transferOrder(event) {
         submitBtn.innerText = origText;
     }
 }
+
+// Handle automatic filtering from URL parameters (e.g., index.php?view=orders&q=CUST-123)
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get('q');
+    
+    if (query) {
+        const searchInput = document.getElementById('order-search');
+        if (searchInput) {
+            searchInput.value = query;
+            filterOrders(); // Trigger the existing filter logic
+        }
+    }
+});
+
+// ─── BULK ACTIONS LOGIC ──────────────────────────────────────────────────────
+
+let selectedOrderIds = new Set();
+const OrderDOM = {
+    selectAll: document.getElementById('selectAll'),
+    bulkBar: document.getElementById('bulkActionBar'),
+    selectedCount: document.getElementById('selectedCount'),
+    tbody: document.getElementById('orders-list')
+};
+
+function updateOrderBulkBar() {
+    const count = selectedOrderIds.size;
+    if (OrderDOM.selectedCount) OrderDOM.selectedCount.textContent = count;
+    if (OrderDOM.bulkBar) OrderDOM.bulkBar.style.display = count > 0 ? 'flex' : 'none';
+}
+
+if (OrderDOM.selectAll) {
+    OrderDOM.selectAll.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        const checkboxes = OrderDOM.tbody.querySelectorAll('.row-select');
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+            const tr = cb.closest('tr');
+            const id = tr.dataset.id;
+            if (isChecked) {
+                selectedOrderIds.add(id);
+                tr.classList.add('selected-row');
+            } else {
+                selectedOrderIds.delete(id);
+                tr.classList.remove('selected-row');
+            }
+        });
+        updateOrderBulkBar();
+    });
+}
+
+if (OrderDOM.tbody) {
+    OrderDOM.tbody.addEventListener('change', (e) => {
+        if (e.target.classList.contains('row-select')) {
+            const tr = e.target.closest('tr');
+            const id = tr.dataset.id;
+            if (e.target.checked) {
+                selectedOrderIds.add(id);
+                tr.classList.add('selected-row');
+            } else {
+                selectedOrderIds.delete(id);
+                tr.classList.remove('selected-row');
+                if (OrderDOM.selectAll) OrderDOM.selectAll.checked = false;
+            }
+            updateOrderBulkBar();
+        }
+    });
+}
+
+document.getElementById('cancelBulkBtn')?.addEventListener('click', () => {
+    selectedOrderIds.clear();
+    if (OrderDOM.selectAll) OrderDOM.selectAll.checked = false;
+    OrderDOM.tbody.querySelectorAll('.row-select').forEach(cb => {
+        cb.checked = false;
+        cb.closest('tr').classList.remove('selected-row');
+    });
+    updateOrderBulkBar();
+});
+
+document.getElementById('applyBulkBtn')?.addEventListener('click', async () => {
+    const status = document.getElementById('bulkStatus').value;
+    
+    if (!status) {
+        alert("Please select a status to apply.");
+        return;
+    }
+
+    if (!confirm(`Update status to "${status}" for ${selectedOrderIds.size} orders?`)) return;
+
+    const btn = document.getElementById('applyBulkBtn');
+    btn.disabled = true;
+    btn.textContent = '⌛ Updating...';
+
+    try {
+        const response = await fetch('api/bulk_update_orders.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ids: Array.from(selectedOrderIds),
+                status: status,
+                csrf_token: document.querySelector('input[name="csrf_token"]').value
+            })
+        });
+
+        const json = await response.json();
+        if (json.success) {
+            IQA_Notify.success(`Successfully updated ${selectedOrderIds.size} orders!`);
+            selectedOrderIds.clear();
+            if (OrderDOM.selectAll) OrderDOM.selectAll.checked = false;
+            updateOrderBulkBar();
+            window.location.reload(); 
+        } else {
+            IQA_Notify.error(`Error: ${json.error}`);
+        }
+    } catch (err) {
+        IQA_Notify.error("Network error during bulk update.");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Apply to Selected';
+    }
+});

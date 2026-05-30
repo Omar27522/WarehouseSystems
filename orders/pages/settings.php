@@ -5,14 +5,7 @@ $message = '';
 $error = '';
 
 try {
-    $conn_u = new PDO("sqlite:" . $db_file);
-    $conn_u->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Migration: ensure display_name column exists
-    $cols = $conn_u->query("PRAGMA table_info(users)")->fetchAll(PDO::FETCH_ASSOC);
-    if (!in_array('display_name', array_column($cols, 'name'))) {
-        $conn_u->exec("ALTER TABLE users ADD COLUMN display_name TEXT DEFAULT ''");
-    }
+    $conn_u = Database::users();
 
     // 1. Handle Password Change (All Users)
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'change_password') {
@@ -95,23 +88,52 @@ try {
         }
     }
     // 3. Handle System Maintenance (Admin Only)
-    if ($_SESSION['username'] === 'admin' && isset($_POST['action']) && $_POST['action'] === 'cleanup_customers') {
-        $db_cust_file = realpath('assets/db/customers.db');
-        $db_orders_file = realpath('assets/db/orders.db');
-        try {
-            if (!$db_cust_file || !$db_orders_file) throw new Exception("Database files not found.");
-            
-            $conn_m = new PDO("sqlite:" . $db_cust_file);
-            $conn_m->exec("ATTACH DATABASE '" . $db_orders_file . "' AS db_o");
-            
-            // Delete customers with no orders
-            $sql_clean = "DELETE FROM customers WHERE customer_id NOT IN (SELECT DISTINCT customer_id FROM db_o.orders)";
-            $stmt_clean = $conn_m->prepare($sql_clean);
-            $stmt_clean->execute();
-            $removed = $stmt_clean->rowCount();
-            
-            $message = "Cleanup complete! Removed {$removed} customer(s) with 0 orders.";
-        } catch (Exception $e) { $error = "Cleanup failed: " . $e->getMessage(); }
+    if ($_SESSION['username'] === 'admin' && isset($_POST['action'])) {
+        if ($_POST['action'] === 'cleanup_customers') {
+            $db_cust_file = realpath('assets/db/customers.db');
+            $db_orders_file = realpath('assets/db/orders.db');
+            try {
+                if (!$db_cust_file || !$db_orders_file) throw new Exception("Database files not found.");
+                
+                $conn_m = new PDO("sqlite:" . $db_cust_file);
+                $conn_m->exec("ATTACH DATABASE '" . $db_orders_file . "' AS db_o");
+                
+                // Delete customers with no orders
+                $sql_clean = "DELETE FROM customers WHERE customer_id NOT IN (SELECT DISTINCT customer_id FROM db_o.orders)";
+                $stmt_clean = $conn_m->prepare($sql_clean);
+                $stmt_clean->execute();
+                $removed = $stmt_clean->rowCount();
+                
+                $message = "Cleanup complete! Removed {$removed} customer(s) with 0 orders.";
+            } catch (Exception $e) { $error = "Cleanup failed: " . $e->getMessage(); }
+        }
+
+        if ($_POST['action'] === 'optimize_db') {
+            try {
+                $dbs = ['customers', 'orders', 'warehouse', 'users', 'calendar'];
+                $optimized = 0;
+                foreach ($dbs as $db) {
+                    $pdo = Database::getConnection($db);
+                    $pdo->exec("VACUUM");
+                    $pdo->exec("ANALYZE");
+                    $optimized++;
+                }
+                $message = "System performance optimized! Re-indexed {$optimized} core databases.";
+            } catch (Exception $e) { $error = "Optimization failed: " . $e->getMessage(); }
+        }
+
+        if ($_POST['action'] === 'integrity_check') {
+            require_once __DIR__ . '/../core/Schema.php';
+            $report = Schema::repairAll();
+            $fixed_count = count($report['fixed']);
+            $err_count   = count($report['errors']);
+            if ($err_count === 0) {
+                $message = "✅ Integrity check complete. {$fixed_count} table(s) verified/repaired. No errors.";
+            } else {
+                $message = "⚠️ Integrity check done. {$fixed_count} table(s) OK. {$err_count} error(s): " . implode(' | ', $report['errors']);
+            }
+            $_SESSION['integrity_report'] = $report;
+        }
     }
 } catch (PDOException $e) { $error = "Database error: " . $e->getMessage(); }
 
@@ -148,6 +170,21 @@ try {
     <?php if ($error): ?>
         <div class="status-msg msg-error" style="width:100%; max-width:500px; margin-top:20px;"><?= $error ?></div>
     <?php endif; ?>
+
+    <!-- 0. APPEARANCE CARD -->
+    <div class="settings-card">
+        <div class="settings-header">
+            <h1>Appearance</h1>
+            <p class="subtitle">Customize the look and feel of the application.</p>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 16px 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div>
+                <strong style="display: block; color: var(--text-main); margin-bottom: 4px;">Dark Mode</strong>
+                <span style="font-size: 0.85rem; color: var(--text-secondary);">Toggle between light and dark themes.</span>
+            </div>
+            <?= UI::theme_toggle() ?>
+        </div>
+    </div>
 
     <!-- 1. PERSONAL SECURITY CARD -->
     <div class="settings-card">
@@ -306,6 +343,120 @@ try {
                 🗑️ Clean Up 0-Order Customers
             </button>
         </form>
+
+        <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #fecdd3;">
+            <h1 style="font-size: 1.2rem; color: var(--text-main); margin-bottom: 6px;">Schema Integrity Check</h1>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 18px;">Use this if the system was deployed fresh and columns are missing from an existing database. This is safe to run at any time — it only <em>adds</em> what's missing, never deletes data.</p>
+
+            <?php
+            $integrity_report = $_SESSION['integrity_report'] ?? null;
+            unset($_SESSION['integrity_report']);
+            if ($integrity_report): ?>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; margin-bottom: 18px; font-size: 0.78rem; font-family: monospace; color: #166534; max-height: 180px; overflow-y: auto;">
+                <strong style="display:block; margin-bottom: 8px; font-size:0.85rem;">Repair Report</strong>
+                <?php foreach ($integrity_report['fixed'] as $t): ?>
+                    <div style="padding: 2px 0;">✓ <?= htmlspecialchars($t) ?></div>
+                <?php endforeach; ?>
+                <?php foreach ($integrity_report['errors'] as $e): ?>
+                    <div style="color:#b91c1c; padding: 2px 0;">✗ <?= htmlspecialchars($e) ?></div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <form method="POST">
+                <input type="hidden" name="action" value="integrity_check">
+                <button type="submit" id="btn-integrity-check" class="btn-main" style="width: 100%; padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border: none; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.95rem;">
+                    🔧 Run Schema Integrity Check
+                </button>
+                <p style="font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 10px;">Inspects all tables across every database and applies any missing column migrations.</p>
+            </form>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #fecdd3;">
+            <h1 style="font-size: 1.2rem; color: var(--text-main); margin-bottom: 15px;">Data Security & Backups</h1>
+            
+            <div style="background: #f0f9ff; border: 1px solid #e0f2fe; padding: 20px; border-radius: 12px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px;">
+                <div style="font-size: 2rem;">🛡️</div>
+                <div>
+                    <h3 style="font-size: 0.9rem; color: #0369a1; margin-bottom: 4px;">One-Click System Backup</h3>
+                    <p style="font-size: 0.8rem; color: #075985; line-height: 1.4;">Download a compressed ZIP archive containing all customers, orders, warehouse inventory, and system logs.</p>
+                </div>
+                <a href="api/generate_backup.php" class="btn-main" style="background: #0369a1; color: white; padding: 12px 20px; font-size: 0.85rem; white-space: nowrap;">
+                    Download ZIP
+                </a>
+            </div>
+
+            <h1 style="font-size: 1.2rem; color: var(--text-main); margin-bottom: 15px;">Storage Health</h1>
+            
+            <div style="display: grid; gap: 10px; margin-bottom: 25px;">
+                <?php
+                $dbs = ['customers', 'orders', 'warehouse', 'users', 'calendar'];
+                foreach ($dbs as $db) {
+                    $path = "assets/db/{$db}.db";
+                    $size = file_exists($path) ? round(filesize($path) / 1024, 2) . ' KB' : 'Not Created';
+                    echo "<div style='display:flex; justify-content:space-between; padding:12px 15px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;'>
+                            <span style='font-size:0.8rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase;'>{$db}.db</span>
+                            <span style='font-size:0.85rem; font-weight:700; color:var(--text-main);'>{$size}</span>
+                          </div>";
+                }
+                ?>
+            </div>
+
+            <form method="POST">
+                <input type="hidden" name="action" value="optimize_db">
+                <button type="submit" class="btn-main" style="width: 100%; padding: 16px; border-radius: 12px; background: #0369a1; color: white; border: none; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    ⚡ Optimize System Performance
+                </button>
+                <p style="font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 12px;">This will re-index databases and reclaim unused disk space.</p>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+    <!-- 5. SYSTEM ACTIVITY LOG (ADMIN ONLY) -->
+    <?php if ($_SESSION['username'] === 'admin'): ?>
+    <div class="settings-card" style="max-width: 800px; width: 95%;">
+        <div class="settings-header">
+            <h1>System Activity Log</h1>
+            <p class="subtitle">A permanent record of sensitive actions performed by staff members.</p>
+        </div>
+
+        <div class="audit-log-container" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px; background: #fafafa;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 1;">
+                    <tr>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color);">Time</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color);">Staff</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color);">Action</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color);">Target</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $logs = Audit::getRecent(20);
+                    if (empty($logs)): ?>
+                        <tr><td colspan="4" style="padding: 40px; text-align: center; color: #94a3b8;">No activity recorded yet.</td></tr>
+                    <?php else: 
+                        foreach($logs as $l): 
+                            $badge_color = strpos($l['action'], 'DELETE') !== false ? '#ef4444' : '#3b82f6';
+                    ?>
+                        <tr style="border-bottom: 1px solid #eee; background: white;">
+                            <td style="padding: 12px; color: #64748b; white-space: nowrap;"><?= date('M d, H:i', strtotime($l['timestamp'])) ?></td>
+                            <td style="padding: 12px; font-weight: 700;"><?= htmlspecialchars($l['user_name']) ?></td>
+                            <td style="padding: 12px;">
+                                <span style="background: <?= $badge_color ?>; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">
+                                    <?= htmlspecialchars($l['action']) ?>
+                                </span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <div style="font-weight: 700;"><?= htmlspecialchars($l['target_id']) ?></div>
+                                <div style="font-size: 0.7rem; color: #94a3b8;"><?= htmlspecialchars($l['details']) ?></div>
+                            </td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 15px; text-align: center;">The audit log is read-only and cannot be modified by staff.</p>
     </div>
     <?php endif; ?>
 </div>

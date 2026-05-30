@@ -8,6 +8,10 @@ $selected_loc = $_GET['loc'] ?? null;
 
 // Handle Add/Edit/Delete Item
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if (!Security::validate($_POST['csrf_token'] ?? '')) {
+        die("Security Error: CSRF Token Invalid.");
+    }
+
     if ($_POST['action'] === 'delete_inventory' && isset($_POST['item_id'])) {
         $stmt = $conn_wh->prepare("DELETE FROM inventory WHERE id=?");
         $stmt->execute([$_POST['item_id']]);
@@ -87,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $model = $_POST['model'];
         $loc = $_POST['location_code'];
         $qty = (int)$_POST['quantity'];
+        $price = (float)($_POST['price'] ?? 0.00);
         $sector = $_POST['sector'];
         
         // Dynamic Specs mapping based on sector
@@ -135,14 +140,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 exit();
             }
 
-            $stmt = $conn_wh->prepare("UPDATE inventory SET brand=?, model=?, specs_json=?, quantity=?, last_updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
-            $stmt->execute([$brand, $model, $specs_json, $qty, $current_user, $_POST['item_id']]);
+            $stmt = $conn_wh->prepare("UPDATE inventory SET brand=?, model=?, specs_json=?, quantity=?, price=?, last_updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
+            $stmt->execute([$brand, $model, $specs_json, $qty, $price, $current_user, $_POST['item_id']]);
+            $last_id = $_POST['item_id'];
         } else {
-            $stmt = $conn_wh->prepare("INSERT INTO inventory (user_owner, sector, location_code, brand, model, specs_json, quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$current_user, $sector, $loc, $brand, $model, $specs_json, $qty]);
+            $stmt = $conn_wh->prepare("INSERT INTO inventory (user_owner, sector, location_code, brand, model, specs_json, quantity, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$current_user, $sector, $loc, $brand, $model, $specs_json, $qty, $price]);
+            $last_id = $conn_wh->lastInsertId();
         }
         $msg = ($_POST['action'] === 'edit_inventory') ? 'updated' : 'added';
-        header("Location: index.php?view=warehouse&sector=" . urlencode($sector) . "&loc=" . urlencode($loc) . "&msg=" . $msg . "#wh-form-title");
+        header("Location: index.php?view=warehouse&sector=" . urlencode($sector) . "&loc=" . urlencode($loc) . "&msg=" . $msg . "&last_id=" . $last_id . "#inventory-list");
         exit();
     }
 }
@@ -186,6 +193,8 @@ if ($selected_loc) {
         $items = $stmt_i->fetchAll(PDO::FETCH_ASSOC);
     }
 }
+
+$highlight_id = $_GET['last_id'] ?? null;
 ?>
 
 <script id="warehouse-state" type="application/json">
@@ -221,6 +230,26 @@ if ($selected_loc) {
             <?php endif; ?>
         </div>
     </header>
+    
+    <!-- Bulk Action Bar -->
+    <div id="bulkActionBar" class="bulk-action-bar" style="display:none;">
+        <div class="bulk-info">
+            <span id="selectedCount">0</span> items selected
+        </div>
+        <div class="bulk-actions">
+            <input type="text" id="bulkLocation" placeholder="Move to Zone..." list="gate-loc-datalist" style="width: 150px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <datalist id="gate-loc-datalist">
+                <?php foreach($existing_locs as $l) echo "<option value='".htmlspecialchars($l['location_code'])."'>"; ?>
+            </datalist>
+            <div style="position:relative; display:flex; align-items:center;">
+                <span style="position:absolute; left:10px; font-weight:800; color:var(--text-secondary);">$</span>
+                <input type="number" id="bulkPrice" placeholder="Price" style="width: 100px; padding: 10px 10px 10px 25px; border-radius: 8px; border: 1px solid var(--border-color);">
+            </div>
+            <button id="applyBulkBtn" class="btn btn-success" style="background: white; color: var(--text-main); font-weight: 800; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">Apply Batch Changes</button>
+            <button id="cancelBulkBtn" style="background: none; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 15px; border-radius: 10px; cursor: pointer; font-weight: 700;">Cancel</button>
+        </div>
+    </div>
+    <?= UI::csrf_field() ?>
 
     <?php if (!$selected_loc): ?>
         <div class="location-gate">
@@ -334,14 +363,15 @@ if ($selected_loc) {
                     </div>
                 </div>
                 <div class="inventory-actions">
-                    <div class="search-container">
+                    <div class="search-container" style="flex: 1; max-width: 300px;">
                         <i class="search-icon">🔍</i>
-                        <input type="text" id="wh-search" placeholder="Search items..." aria-label="Search warehouse inventory" onkeyup="filterWarehouse()" class="search-input">
+                        <input type="text" id="wh-search" placeholder="Search items..." aria-label="Search warehouse inventory" onkeyup="syncSearch(this)" onkeydown="if(event.key==='Enter') event.preventDefault()" class="search-input">
                     </div>
+                    <a href="#wh-main-form" class="btn-export" style="background: var(--text-main); color: white; border: none;">NEW Item</a>
                     <button type="button" onclick="downloadWarehouseCSV()" class="btn-export">
                         📊 Export CSV
                     </button>
-                    <button type="button" onclick="window.location.href='index.php?view=import_warehouse'" class="btn-export" style="background: var(--text-main); color: white; border: none;">
+                    <button type="button" onclick="window.location.href='index.php?view=import_warehouse'" class="btn-export" style="background: #1e293b; color: white; border: none;">
                         📥 Import Bulk
                     </button>
                 </div>
@@ -351,11 +381,13 @@ if ($selected_loc) {
                 <table class="inventory-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAll"></th>
                             <th class="col-type">Location</th>
                             <?php if ($selected_sector === 'Master'): ?>
                                 <th>Sector</th>
                             <?php endif; ?>
                             <th class="col-main">Make/Model</th>
+                            <th class="col-qty">Price</th>
                             <th class="col-qty">QTY</th>
                             <?php if ($selected_sector === 'Laptops'): ?>
                                 <th>CPU</th>
@@ -383,18 +415,32 @@ if ($selected_loc) {
                                 </td>
                             </tr>
                         <?php else: ?>
+                            <!-- Dynamic No Results Placeholder -->
+                            <tr id="wh-no-results" class="no-results-row" style="display: none;">
+                                <td colspan="12">
+                                    <div class="no-results-wrapper" style="display: flex; justify-content: center; width: 100%;">
+                                        <div class="no-results-container">
+                                            <div class="no-results-icon">🕵️‍♂️</div>
+                                            <div style="font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em;">No matches found</div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
                             <?php foreach ($items as $item): 
                                 $specs = json_decode($item['specs_json'], true) ?: [];
                                 $created_date = date('m/d/y', strtotime($item['created_at']));
                                 $updated_date = date('m/d/y', strtotime($item['updated_at']));
                             ?>
-                                <tr class="inventory-card" 
+                                <tr class="inventory-card <?= ($highlight_id && $item['id'] == $highlight_id) ? 'highlight-row' : '' ?>" 
+                                     data-id="<?= $item['id'] ?>"
                                      data-sector-theme="<?= htmlspecialchars($item['sector']) ?>"
                                      data-brand="<?= htmlspecialchars($item['brand']) ?>"
                                      data-model="<?= htmlspecialchars($item['model']) ?>"
+                                     data-price="<?= htmlspecialchars($item['price'] ?? '0.00') ?>"
                                      data-specs='<?= htmlspecialchars($item['specs_json'], ENT_QUOTES) ?>'
-                                     data-search="<?= htmlspecialchars(strtolower($item['brand'] . ' ' . $item['model'] . ' ' . $item['location_code'])) ?>">
+                                     data-search="<?= htmlspecialchars(strtolower($item['brand'] . ' ' . $item['model'] . ' ' . $item['location_code'] . ' ' . ($specs['cpu'] ?? '') . ' ' . ($specs['cpu_gen'] ?? '') . ' ' . ($specs['ram'] ?? '') . ' ' . ($specs['storage'] ?? '') . ' ' . ($specs['series'] ?? '') . ' ' . ($specs['notes'] ?? ''))) ?>">
                                     
+                                    <td style="text-align: center;"><input type="checkbox" class="row-select"></td>
                                     <td><span class="location-tag"><?= htmlspecialchars($item['location_code']) ?></span></td>
                                     
                                     <?php if ($selected_sector === 'Master'): ?>
@@ -409,6 +455,8 @@ if ($selected_loc) {
                                         <div class="cell-make"><?= htmlspecialchars($item['brand']) ?></div>
                                         <div class="cell-model"><?= htmlspecialchars($item['model']) ?></div>
                                     </td>
+
+                                    <td><span class="price-pill">$<?= number_format($item['price'] ?? 0, 0) ?></span></td>
 
                                     <td><span class="qty-pill"><?= (int)$item['quantity'] ?></span></td>
 
@@ -438,7 +486,7 @@ if ($selected_loc) {
                                     <td>
                                         <div class="notes-cell-wrapper">
                                             <div class="status-row">
-                                                <span class="status-badge status-<?= $item['status'] ?>"><?= $item['status'] ?></span>
+                                                <span class="status-badge status-<?= htmlspecialchars($item['status']) ?>"><?= htmlspecialchars($item['status']) ?></span>
                                                 <span class="condition-label"><?= htmlspecialchars($specs['condition'] ?? 'Used') ?></span>
                                                 <?php if ($item['sector'] === 'Laptops'): ?>
                                                     <span class="battery-badge <?= empty($specs['battery']) ? 'missing' : '' ?>" title="Battery Status">
@@ -473,6 +521,7 @@ if ($selected_loc) {
                                                 <input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>">
                                                 <input type="hidden" name="sector" value="<?= htmlspecialchars($selected_sector) ?>">
                                                 <input type="hidden" name="location_code" value="<?= htmlspecialchars($selected_loc) ?>">
+                                                <?= UI::csrf_field() ?>
                                                 <button type="submit" class="row-action-btn btn-delete" title="Delete Entry">🗑️</button>
                                             </form>
                                         </div>
@@ -483,18 +532,24 @@ if ($selected_loc) {
                     </tbody>
                     <tfoot style="border-top: 2px solid #e2e8f0; background: #f8fafc;">
                         <tr>
-                            <td colspan="2" style="text-align: right; padding: 15px; font-size: 1.1rem; color: #334155; font-weight: 800;">Inventory Total:</td>
+                            <td colspan="2" style="padding: 15px;">
+                                <div class="search-container footer-search" style="max-width: 300px; margin: 0;">
+                                    <i class="search-icon">🔍</i>
+                                    <input type="text" id="wh-search-footer" placeholder="Filter these results..." onkeyup="syncSearch(this)" onkeydown="if(event.key==='Enter') event.preventDefault()" class="search-input" style="height: 40px; font-size: 0.9rem; border-radius: 10px;">
+                                </div>
+                            </td>
+                            <td style="text-align: right; padding: 15px; font-size: 1.1rem; color: #334155; font-weight: 800;">Inventory Total:</td>
                             <td style="padding: 15px;">
                                 <span class="qty-pill" id="table-total-qty" style="background: #1e293b; color: white; font-size: 1.1rem; padding: 6px 12px;">
                                     <?= number_format($total_qty) ?>
                                 </span>
                             </td>
                             <?php if ($selected_sector === 'Laptops' || $selected_sector === 'Gaming'): ?>
-                                <td colspan="6"></td>
+                                <td colspan="5"></td>
                             <?php elseif ($selected_sector === 'Desktops'): ?>
-                                <td colspan="4"></td>
-                            <?php else: ?>
                                 <td colspan="3"></td>
+                            <?php else: ?>
+                                <td colspan="2"></td>
                             <?php endif; ?>
                         </tr>
                     </tfoot>
@@ -509,11 +564,17 @@ if ($selected_loc) {
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3 id="wh-form-title" style="font-weight: 800; margin: 0;">📥 Register Stock</h3>
+                    <div id="session-counter" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; color: #15803d; display: none;">
+                        ✨ <span id="session-count-val">0</span> Added this session
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px; display: flex; justify-content: flex-end;">
                     <button type="button" id="btn-clone-last" onclick="fillLastEnteredData()" style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; cursor: pointer; color: #475569; transition: all 0.2s;">
                         📋 Clone Last
                     </button>
                 </div>
                 <form method="POST" action="" id="wh-main-form">
+                    <?= UI::csrf_field() ?>
                     <input type="hidden" name="action" id="wh-form-action" value="add_inventory">
                     <input type="hidden" name="item_id" id="wh-edit-id" value="">
                     <input type="hidden" name="last_updated_at" id="wh-last-updated" value="">
@@ -535,23 +596,6 @@ if ($selected_loc) {
                             <input type="text" name="model" list="model-options" id="wh-model" placeholder="Latitude" required style="width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding: 0 12px;">
                             <datalist id="model-options"></datalist>
                         </div></div>
-                        <?php if (isset($_GET['msg'])): ?>
-                    <div class="msg-banner <?= strpos($_GET['msg'], 'ERROR') !== false ? 'error' : '' ?>" id="wh-msg-banner" style="background: <?= strpos($_GET['msg'], 'ERROR') !== false ? '#fef2f2' : '#f0fdf4' ?>; border: 1px solid <?= strpos($_GET['msg'], 'ERROR') !== false ? '#fecaca' : '#bbf7d0' ?>; color: <?= strpos($_GET['msg'], 'ERROR') !== false ? '#991b1b' : '#15803d' ?>; padding: 12px 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.85rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; animation: slideDown 0.3s ease; transition: opacity 0.5s ease, transform 0.5s ease;">
-                        <span><?= strpos($_GET['msg'], 'ERROR') !== false ? '⚠️' : '✅' ?></span>
-                        <span style="flex: 1; margin: 0 10px;">
-                            <?php 
-                                if($_GET['msg'] === 'added') echo "Stock registered successfully!";
-                                elseif($_GET['msg'] === 'updated') echo "Entry updated successfully!";
-                                elseif($_GET['msg'] === 'deleted') echo "Entry removed from stock.";
-                                elseif($_GET['msg'] === 'zone_renamed') echo "Working zone renamed successfully!";
-                                elseif($_GET['msg'] === 'zone_deleted') echo "Working zone and all its items have been deleted.";
-                                elseif($_GET['msg'] === 'CONCURRENCY_ERROR') echo "<strong>COLLISION:</strong> Record updated by another user. Please refresh and try again.";
-                                else echo htmlspecialchars($_GET['msg']);
-                            ?>
-                        </span>
-                        <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#15803d; cursor:pointer; font-size:1.2rem; line-height:1; padding:0 5px; opacity:0.5;">&times;</button>
-                    </div>
-                <?php endif; ?>
                     
 
                     <!-- Sector Specific Fields -->
@@ -560,7 +604,7 @@ if ($selected_loc) {
                             <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                                 <div class="form-group" style="flex: 1;">
                                     <label for="wh-spec-cpu">CPU</label>
-                                    <input type="text" id="wh-spec-cpu" name="cpu" placeholder="Core i7-1185G7" style="width:100%; height:38px; border-radius:8px; border:1px solid #ddd; padding: 0 10px;">
+                                    <input type="text" id="wh-spec-cpu" name="cpu" list="cpu-options" placeholder="Core i7-1185G7" style="width:100%; height:38px; border-radius:8px; border:1px solid #ddd; padding: 0 10px;">
                                 </div>
                                 <div class="form-group" style="flex: 1;">
                                     <label for="wh-spec-gpu">GPU</label>
@@ -681,6 +725,13 @@ if ($selected_loc) {
                             </select>
                         </div>
                         <div class="form-group" style="flex: 1;">
+                            <label for="wh-price">Price</label>
+                            <div style="position:relative; display:flex; align-items:center;">
+                                <span style="position:absolute; left:12px; font-weight:800; color:#64748b;">$</span>
+                                <input type="number" step="1" id="wh-price" name="price" value="" placeholder="150" min="0" required style="width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding: 0 12px 0 25px; font-weight: 800;">
+                            </div>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
                             <label for="wh-quantity">Initial Quantity</label>
                             <input type="number" id="wh-quantity" name="quantity" value="1" min="1" required style="width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding: 0 12px; font-weight: 800;">
                         </div>
@@ -715,6 +766,7 @@ if ($selected_loc) {
 <div id="rename-modal" class="modal-overlay no-print" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:1000; align-items:center; justify-content:center;" onclick="if(event.target===this) closeRenameModal()">
     <div style="background:white; border-radius:24px; width:95%; max-width:450px; padding:35px; box-shadow:var(--shadow-lg); position:relative;">
         <form method="POST" id="delete-zone-form" onsubmit="return confirm('CRITICAL ACTION: This will PERMANENTLY DELETE ALL ITEMS in this zone. This cannot be undone. Proceed?');">
+            <?= UI::csrf_field() ?>
             <input type="hidden" name="action" value="delete_zone">
             <input type="hidden" name="old_loc" id="delete-zone-loc">
             <button type="submit" class="btn-hidden-delete" title="Hidden: Delete Zone" style="position:absolute; top:20px; right:20px; background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.1; transition:opacity 0.3s, transform 0.2s; padding:5px;">🗑️</button>
@@ -724,6 +776,7 @@ if ($selected_loc) {
         <p style="font-size:0.85rem; color:#64748b; margin-bottom:25px;">Update the name or operational status of this location.</p>
         
         <form method="POST">
+            <?= UI::csrf_field() ?>
             <input type="hidden" name="action" value="rename_zone">
             <input type="hidden" name="old_loc" id="rename-old-loc">
             

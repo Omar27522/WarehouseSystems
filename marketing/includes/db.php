@@ -54,6 +54,8 @@ function get_master_crm_db() {
         try {
             $crm_pdo = new PDO("sqlite:" . MASTER_CRM_DB_PATH);
             $crm_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $crm_pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            crm_schema_guard($crm_pdo);
         } catch (PDOException $e) {
             die("Master CRM Connection failed: " . $e->getMessage());
         }

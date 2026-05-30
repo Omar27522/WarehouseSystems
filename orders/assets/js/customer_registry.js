@@ -65,6 +65,26 @@ const escapeHTML = (str) => {
 };
 
 /**
+ * Gets the CSRF token from the crm-state script tag
+ * @returns {string}
+ */
+const getCsrfToken = () => {
+    const stateEl = document.getElementById('crm-state');
+    if (!stateEl) return '';
+    try {
+        return JSON.parse(stateEl.textContent).csrf_token;
+    } catch (e) {
+        return '';
+    }
+};
+
+/**
+ * Renders a hidden CSRF field for forms
+ * @returns {string}
+ */
+const csrfField = () => `<input type="hidden" name="csrf_token" value="${getCsrfToken()}">`;
+
+/**
  * Renders the detail view in the sidebar
  * @param {Customer} data
  */
@@ -140,6 +160,7 @@ function renderDetailView(data) {
                                 </div>
                             </a>
                             <form method="POST" onsubmit="return confirm('Delete this batch permanently?')" style="margin:0;">
+                                ${csrfField()}
                                 <input type="hidden" name="action" value="delete_order">
                                 <input type="hidden" name="order_id" value="${o.order_id}">
                                 <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:1.2rem; opacity:0.3; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.3">🗑️</button>
@@ -147,6 +168,15 @@ function renderDetailView(data) {
                         </div>
                     `).join('') : '<div class="empty-state" style="padding: 20px; font-size: 0.8rem; border-radius: 12px; background: #f8fafc; border: 1px dashed #e2e8f0; color: #94a3b8;">No active batches.</div>'}
                 </div>
+            </div>
+
+            <div style="padding-top: 20px; padding-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
+                <a href="index.php?customer_id=${encodeURIComponent(data.customer_id)}&action=create_new_order" class="btn-register" style="display:flex; align-items:center; justify-content:center; gap: 10px; height: 54px; font-size: 1rem; margin: 0;">
+                    <span>+</span> Create New Fresh Batch
+                </a>
+                <button type="button" onclick="openImportModal('${escapeHTML(data.customer_id)}')" class="btn-register" style="display:flex; align-items:center; justify-content:center; gap: 10px; height: 54px; font-size: 1rem; background: #f8fafc; color: var(--text-main); border: 1px dashed #cbd5e1; margin: 0;">
+                    <span>📋</span> Import from Clipboard
+                </button>
             </div>
 
             <div class="detail-item">
@@ -166,6 +196,7 @@ function renderDetailView(data) {
                                 </div>
                             </a>
                             <form method="POST" onsubmit="return confirm('Delete this completed order permanently?')" style="margin:0;">
+                                ${csrfField()}
                                 <input type="hidden" name="action" value="delete_order">
                                 <input type="hidden" name="order_id" value="${o.order_id}">
                                 <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:1.2rem; opacity:0.1; transition:opacity 0.2s;" onmouseover="this.style.opacity=0.6" onmouseout="this.style.opacity=0.1">🗑️</button>
@@ -180,11 +211,6 @@ function renderDetailView(data) {
                 <div class="detail-value" style="font-size: 0.9rem; white-space: pre-wrap; color: var(--text-secondary); line-height: 1.5; font-weight: 500; margin-top: 6px;">${data.internal_notes ? escapeHTML(data.internal_notes) : '<i style="opacity:0.4;">No internal notes recorded.</i>'}</div>
             </div>
 
-            <div style="padding-top: 20px; padding-bottom: 20px;">
-                <a href="index.php?customer_id=${encodeURIComponent(data.customer_id)}&action=create_new_order" class="btn-register" style="display:flex; align-items:center; justify-content:center; gap: 10px; height: 54px; font-size: 1rem;">
-                    <span>+</span> Create New Fresh Batch
-                </a>
-            </div>
         </div>
     `;
 }
@@ -207,6 +233,7 @@ function renderEditView(data) {
 
     side.innerHTML = `
         <form method="POST" class="detail-box">
+            ${csrfField()}
             <input type="hidden" name="action" value="edit_customer">
             <input type="hidden" name="customer_id" value="${data.customer_id}">
 
@@ -273,6 +300,7 @@ function renderEditView(data) {
 
         <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #fee2e2;">
             <form method="POST" onsubmit="return confirm('⚠️ DANGER ZONE: This will permanently delete this customer and ALL their order history. This cannot be undone. Proceed?')">
+                ${csrfField()}
                 <input type="hidden" name="action" value="delete_customer">
                 <input type="hidden" name="customer_id" value="${data.customer_id}">
                 <button type="submit" style="width:100%; padding:12px; border-radius:12px; background:#fef2f2; color:#b91c1c; font-weight:700; border:1px solid #fecdd3; cursor:pointer; font-size:0.85rem; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
@@ -398,3 +426,317 @@ window.addEventListener('load', () => {
         }
     }
 });
+
+/**
+ * Import Modal Logic
+ */
+let activeImportCustomerId = null;
+
+function openImportModal(customerId) {
+    activeImportCustomerId = customerId;
+    const modal = document.getElementById('import-modal');
+    const area = document.getElementById('import-paste-area');
+    if (modal) {
+        modal.classList.add('active');
+        if (area) {
+            area.value = '';
+            area.focus();
+        }
+    }
+}
+
+function closeImportModal() {
+    const modal = document.getElementById('import-modal');
+    if (modal) modal.classList.remove('active');
+    activeImportCustomerId = null;
+}
+
+// Smart paste parsing with delimiter detection & dynamic header matching
+function parsePastedText(text) {
+    if (!text.trim()) return { items: [], mapping: { brand: -1, model: -1, series: -1, cpu: -1, description: -1, price: -1, qty: -1, hasHeader: false, delimiterName: 'Tab' } };
+
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return { items: [], mapping: { brand: -1, model: -1, series: -1, cpu: -1, description: -1, price: -1, qty: -1, hasHeader: false, delimiterName: 'Tab' } };
+
+    // 1. Detect Delimiter (Count tabs, commas, semicolons)
+    let tabCount = 0;
+    let commaCount = 0;
+    let semiCount = 0;
+    const testLimit = Math.min(lines.length, 5);
+    for (let i = 0; i < testLimit; i++) {
+        tabCount += (lines[i].match(/\t/g) || []).length;
+        commaCount += (lines[i].match(/,/g) || []).length;
+        semiCount += (lines[i].match(/;/g) || []).length;
+    }
+
+    let delimiter = '\t';
+    if (commaCount > tabCount && commaCount > semiCount) delimiter = ',';
+    else if (semiCount > tabCount && semiCount > commaCount) delimiter = ';';
+
+    // Helper to split a line safely, handling quotes
+    const splitLine = (line, delim) => {
+        if (delim === '\t' || delim === ';') {
+            return line.split(delim).map(v => {
+                let s = v.trim();
+                if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
+                return s;
+            });
+        }
+        
+        // CSV splits with quotes
+        const result = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === delim && !inQuotes) {
+                result.push(cur.trim());
+                cur = '';
+            } else {
+                cur += char;
+            }
+        }
+        result.push(cur.trim());
+        return result.map(s => {
+            if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
+            return s;
+        });
+    };
+
+    const parsedRows = lines.map(line => splitLine(line, delimiter));
+
+    let brandIdx = -1;
+    let modelIdx = -1;
+    let seriesIdx = -1;
+    let cpuIdx = -1;
+    let descIdx = -1;
+    let priceIdx = -1;
+    let qtyIdx = -1;
+    let hasHeader = false;
+
+    if (parsedRows.length > 0) {
+        const firstRow = parsedRows[0];
+        firstRow.forEach((col, idx) => {
+            const colLower = col.toLowerCase().trim();
+            if (colLower.includes('brand')) { brandIdx = idx; hasHeader = true; }
+            else if (colLower.includes('model')) { modelIdx = idx; hasHeader = true; }
+            else if (colLower.includes('series')) { seriesIdx = idx; hasHeader = true; }
+            else if (colLower.includes('cpu') || colLower.includes('processor')) { cpuIdx = idx; hasHeader = true; }
+            else if (colLower.includes('desc') || colLower.includes('description') || colLower.includes('spec')) { descIdx = idx; hasHeader = true; }
+            else if (colLower.includes('price') || colLower.includes('value') || colLower.includes('cost') || colLower.includes('unit_price')) { priceIdx = idx; hasHeader = true; }
+            else if (colLower.includes('qty') || colLower.includes('quantity') || colLower.includes('count') || colLower.includes('units')) { qtyIdx = idx; hasHeader = true; }
+        });
+    }
+
+    const dataRows = hasHeader ? parsedRows.slice(1) : parsedRows;
+
+    // Fallback mappings if no header row exists
+    if (!hasHeader && parsedRows.length > 0) {
+        const colCount = parsedRows[0].length;
+        if (colCount >= 8) {
+            brandIdx = 1;
+            modelIdx = 2;
+            seriesIdx = 3;
+            cpuIdx = 4;
+            descIdx = 5;
+            priceIdx = 6;
+            qtyIdx = 7;
+        } else if (colCount === 7) {
+            brandIdx = 0;
+            modelIdx = 1;
+            seriesIdx = 2;
+            cpuIdx = 3;
+            descIdx = 4;
+            priceIdx = 5;
+            qtyIdx = 6;
+        } else if (colCount === 6) {
+            brandIdx = 0;
+            modelIdx = 1;
+            seriesIdx = 2;
+            cpuIdx = 3;
+            priceIdx = 4;
+            qtyIdx = 5;
+        } else if (colCount === 5) {
+            brandIdx = 0;
+            modelIdx = 1;
+            seriesIdx = 2;
+            priceIdx = 3;
+            qtyIdx = 4;
+        } else if (colCount === 4) {
+            brandIdx = 0;
+            modelIdx = 1;
+            priceIdx = 2;
+            qtyIdx = 3;
+        } else if (colCount === 3) {
+            brandIdx = 0;
+            modelIdx = 1;
+            qtyIdx = 2;
+        } else if (colCount === 2) {
+            brandIdx = 0;
+            modelIdx = 1;
+        }
+    }
+
+    const items = [];
+    dataRows.forEach(cols => {
+        if (cols.length < 2) return;
+
+        const brand = brandIdx !== -1 ? (cols[brandIdx] || '').trim() : 'Generic';
+        const model = modelIdx !== -1 ? (cols[modelIdx] || '').trim() : 'Bulk Item';
+        const series = seriesIdx !== -1 ? (cols[seriesIdx] || '').trim() : 'N/A';
+        const cpu = cpuIdx !== -1 ? (cols[cpuIdx] || '').trim() : '';
+        const description = descIdx !== -1 ? (cols[descIdx] || '').trim() : '';
+        
+        let price = 0;
+        if (priceIdx !== -1 && cols[priceIdx]) {
+            const parsedPrice = parseFloat(cols[priceIdx].toString().replace(/[^-0-9.]/g, ''));
+            if (!isNaN(parsedPrice)) price = parsedPrice;
+        }
+
+        let qty = 1;
+        if (qtyIdx !== -1 && cols[qtyIdx]) {
+            const parsedQty = parseInt(cols[qtyIdx].toString().replace(/[^-0-9]/g, ''));
+            if (!isNaN(parsedQty)) qty = parsedQty;
+        }
+
+        if (!brand && !model) return;
+
+        items.push({
+            brand: brand || 'Generic',
+            model: model || 'Bulk Item',
+            series: series || 'N/A',
+            cpu: cpu || '',
+            description: description || '',
+            quantity: qty,
+            unit_price: price
+        });
+    });
+
+    const mapping = {
+        brand: brandIdx,
+        model: modelIdx,
+        series: seriesIdx,
+        cpu: cpuIdx,
+        description: descIdx,
+        price: priceIdx,
+        qty: qtyIdx,
+        hasHeader,
+        delimiterName: delimiter === '\t' ? 'Tab (Excel/Sheets)' : delimiter === ',' ? 'CSV (Comma)' : 'Semicolon'
+    };
+
+    return { items, mapping };
+}
+
+// Listen for paste to show preview
+document.getElementById('import-paste-area')?.addEventListener('input', function() {
+    const text = this.value;
+    const preview = document.getElementById('import-preview');
+    const table = document.getElementById('import-preview-table');
+    const count = document.getElementById('import-row-count');
+    const mappingInfo = document.getElementById('import-mapping-info');
+
+    if (!text.trim()) {
+        preview.style.display = 'none';
+        return;
+    }
+
+    const { items, mapping } = parsePastedText(text);
+
+    preview.style.display = 'block';
+    count.innerText = items.length;
+
+    // Display parsed column layout information
+    const activeMappings = [];
+    if (mapping.brand !== -1) activeMappings.push(`<b>Brand</b> (Col ${mapping.brand + 1})`);
+    if (mapping.model !== -1) activeMappings.push(`<b>Model</b> (Col ${mapping.model + 1})`);
+    if (mapping.series !== -1) activeMappings.push(`<b>Series</b> (Col ${mapping.series + 1})`);
+    if (mapping.cpu !== -1) activeMappings.push(`<b>CPU</b> (Col ${mapping.cpu + 1})`);
+    if (mapping.description !== -1) activeMappings.push(`<b>Description</b> (Col ${mapping.description + 1})`);
+    if (mapping.price !== -1) activeMappings.push(`<b>Price</b> (Col ${mapping.price + 1})`);
+    if (mapping.qty !== -1) activeMappings.push(`<b>Qty</b> (Col ${mapping.qty + 1})`);
+
+    const headerMsg = mapping.hasHeader 
+        ? `✨ Auto-detected header row in <b>${mapping.delimiterName}</b> format.` 
+        : `⚡ No header found. Fallback mapping used in <b>${mapping.delimiterName}</b> format.`;
+
+    if (mappingInfo) {
+        mappingInfo.innerHTML = `
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:12px; border-radius:12px; font-size:0.75rem; margin-bottom:15px; line-height:1.5;">
+                <div>${headerMsg}</div>
+                <div style="margin-top:6px; opacity:0.9;">Mapping: ${activeMappings.join(' | ')}</div>
+            </div>
+        `;
+    }
+
+    let html = `<thead><tr style="background:#f1f5f9; text-align:left; position:sticky; top:0; z-index:1; box-shadow:0 1px 0 #e2e8f0;"><th style="padding:8px 10px; width:20%;">Brand</th><th style="padding:8px 10px; width:30%;">Model</th><th style="padding:8px 10px; width:25%;">Specs</th><th style="padding:8px 10px; width:10%;">Qty</th><th style="padding:8px 10px; width:15%;">Price</th></tr></thead><tbody>`;
+    
+    items.slice(0, 50).forEach(item => {
+        const specs = [item.series, item.cpu].filter(v => v && v !== 'N/A').join(' / ') || item.description || '—';
+        html += `<tr>
+            <td style="padding:6px 10px; border-top:1px solid #eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHTML(item.brand)}</td>
+            <td style="padding:6px 10px; border-top:1px solid #eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHTML(item.model)}</td>
+            <td style="padding:6px 10px; border-top:1px solid #eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#64748b;" title="${escapeHTML(specs)}">${escapeHTML(specs)}</td>
+            <td style="padding:6px 10px; border-top:1px solid #eee;">${item.quantity}</td>
+            <td style="padding:6px 10px; border-top:1px solid #eee; font-weight:700; color:var(--accent-color);">$${item.unit_price.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    if (items.length > 50) {
+        html += `<tr><td colspan="5" style="text-align:center; padding:10px; color:#94a3b8; font-style:italic; background:white;">... and ${items.length - 50} more rows</td></tr>`;
+    }
+    html += '</tbody>';
+    table.innerHTML = html;
+});
+
+async function processImport() {
+    const area = document.getElementById('import-paste-area');
+    const btn = document.getElementById('btn-submit-import');
+    if (!area || !area.value.trim() || !activeImportCustomerId) return;
+
+    const originalBtnText = btn.innerHTML;
+    btn.innerHTML = '⏳ Processing...';
+    btn.disabled = true;
+
+    const stateEl = document.getElementById('crm-state');
+    const csrfToken = stateEl ? JSON.parse(stateEl.textContent).csrf_token : '';
+
+    const { items } = parsePastedText(area.value);
+    if (items.length === 0) {
+        alert("No valid items detected to import.");
+        btn.innerHTML = originalBtnText;
+        btn.disabled = false;
+        return;
+    }
+    
+    try {
+        const response = await fetch('api/bulk_update_orders.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'bulk_import',
+                csrf_token: csrfToken,
+                customer_id: activeImportCustomerId,
+                items: items
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            btn.innerHTML = '✅ Success!';
+            setTimeout(() => {
+                window.location.href = `index.php?customer_id=${encodeURIComponent(activeImportCustomerId)}&order_id=${encodeURIComponent(result.order_id)}`;
+            }, 1000);
+        } else {
+            alert("Import failed: " + (result.error || "Unknown error"));
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Network error during import.");
+        btn.innerHTML = originalBtnText;
+        btn.disabled = false;
+    }
+}

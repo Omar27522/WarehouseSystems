@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['inventory_csv'])) {
         <div style="background: white; padding: 40px; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm);">
             <form action="index.php?view=import_warehouse" method="POST" enctype="multipart/form-data">
                 <div style="margin-bottom: 30px;">
-                    <label style="display: block; font-weight: 800; font-size: 1.1rem; color: var(--text-main); margin-bottom: 15px;">1. Select Inventory Manifest</label>
+                    <label for="csv-input" style="display: block; font-weight: 800; font-size: 1.1rem; color: var(--text-main); margin-bottom: 15px;">1. Select Inventory Manifest</label>
                     <div id="drop-zone" style="border: 2px dashed #cbd5e1; border-radius: 20px; padding: 60px 20px; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.3s ease;">
                         <input type="file" name="inventory_csv" id="csv-input" accept=".csv" required style="display: none;">
                         <div style="font-size: 4rem; margin-bottom: 15px;">📂</div>

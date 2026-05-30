@@ -1,168 +1,109 @@
 # 🏬 IQA Warehouse Inventory & Order Manager
+
 ## 📋 Project Overview
-A robust, high-performance order procurement application designed for building and managing complex inventory batches. Optimized for both rapid warehouse intake on mobile devices and professional desktop manifest generation.
+A high-performance B2B order management system optimized for rapid warehouse hardware intake, CRM relationship tracking, and administrative scheduling. The application focuses on speed, optimistic data consistency, and a premium "app-like" experience for both desktop and iOS Safari.
 
 ---
 
 ## 🚀 Core Features
 
-### 1. Active Customer Registry Dashboard
-Manage the entire B2B database from a high-performance centralized interface.
-- **Dual-Pane Independent Scrolling**: Optimized layout for all viewport sizes.
-- **Intelligent Sorting & Persistence**: 
-    - Sort customers by **Name**, **Total Orders**, **Lifetime Value**, or **Last Order Date**.
-    - **Session Memory**: The system remembers your sort preference as you navigate.
-    - **Default View**: Optimized to show **Recent Purchases** first.
-- **Live Business Intelligence**:
-    - **Lifetime Value (LTV)**: Automatically calculated total gross value displayed as a vibrant currency badge.
-    - **Order History**: Real-time summary of active vs. completed batches with deep links.
-- **CRM & Lead Hub** (`pages/leads.php`):
-    - **Executive Conversion Bar**: Real-time tracking of Active Leads and total Pipeline Value.
-    - **Priority Follow-ups**: A dedicated "Call Today" section that highlights leads with pending or overdue callback dates.
-    - **Visual Pulse Timeline**: A date-separated logging system that maps interaction methods (Phone, Email, Message) to intuitive icons (📞, 📧, 💬).
-    - **One-Tap Quick Actions**: Instantly log common interactions directly from the modal, auto-updating dates and history notes.
-    - **Quick Add Lead**: A high-speed capture modal that allows for seamless lead registration without leaving the CRM pipeline.
-    - **Automated Financial Intelligence**: Real-time calculation of **Total Balance** and **Last Order ID** from the orders database.
-- **Account Management & Auto-Batch Workflow**:
-    - **Zero-Click Fulfillment**: Registering a full customer via `pages/new_customer.php` automatically initializes a new "Fresh Batch" (order) and teleports the user directly to the Order Entry screen.
-    - **Secure Cascading Deletion**: Permanently remove a customer and all their associated orders/items with a single action.
+### 1. 📅 Admin Calendar & Scheduling (`pages/calendar.php`)
+The command center for administrative oversight and visit scheduling.
+- **Dual-View Layout**: Toggle between a data-dense **Monthly Grid** and a focus-driven **Weekly Timeline** (Mon-Fri).
+- **Smart Sync Engine**: 
+    - **CRM Integration**: Automatically pulls callback dates from the Leads database as "Suggested Tasks."
+    - **Conversion Intelligence**: Cross-references visit dates with order creation to tag events as **Converted ✅** (resulting in a sale) or **Window Shopping 👀**.
+- **Interactive Timeline Picker**: A gamified, thumb-friendly time selector restricted to business hours (8 AM – 5 PM). 
+- **Auto-Duration Logic**: Titles like "Meeting" or "Lunch" trigger automated duration suggestions (1hr-2hr blocks).
+- **iOS Optimized**: Features a horizontal-scrolling weekly grid with fixed time labels for zero-friction mobile use.
 
-### 2. Batch Builder (Order Entry) — `pages/new_order.php`
-The central tool for adding hardware to active orders.
-- **Dynamic Logic**: Intelligent dropdowns that filter models and series based on the selected brand (Dell, HP, Apple, etc.).
-- **Live Search**: Real-time search bar in the Order Summary panel filters all added items instantly without a page reload.
-- **Inline Editing**: Each item row includes a ✏️ pencil icon to toggle Qty and Unit Price edit fields, with auto-submit on change and a smart `#order-summary` anchor on reload so the viewport never jumps.
-- **No Limit**: The full order is always displayed (the previous 20-item cap has been removed), so the search box always scans the complete manifest.
-- **Optimized for Mobile**: Touch-friendly inputs enforcing `16px` font sizes to prevent iOS Safari auto-zoom.
+### 2. 🎯 CRM & Relationship Hub (`pages/leads.php`)
+A streamlined pipeline for managing prospects and logging customer interactions.
+- **Executive Conversion Bar**: Real-time KPI tracking showing **Active Leads** count and total **Pipeline Value** (potential gross).
+- **Priority Follow-ups**: A dedicated "Call Today" section that highlights overdue or immediate callbacks.
+- **Visual Pulse Timeline**: A vertical history map using intuitive icons (📞, 📧, 💬) for phone calls, emails, and messages.
+- **One-Tap Quick Actions**: Interaction modals allow for rapid logging of common outcomes, which automatically updates the next callback date.
+- **Zero-Click Fulfillment**: Promoting a lead to a customer automatically initializes a new batch (order) and redirects the user directly to the intake terminal.
 
-### 3. Verification & Checkout — `checkout.php`
-The final stage before manifest delivery.
-- **Live Manifest Search**: A flexible search bar below the "Final Batch Verification" header filters all item rows in real time.
-- **Interactive Row Editing**: Click any item row to open a premium glassmorphism **Edit Item** modal with animated slide-up/scale-in transitions.
-  - Full metadata editing: Brand, Model, Series, CPU/Gen, Condition/Comments, Qty, Unit Price.
-  - **AJAX Live Sync**: Changes are persisted and immediately reflected in the main table UI without a page reload, preserving unsaved changes in other manifest rows.
-  - **🖨️ Print Label (.odt)**: Generate a 2"×1" Thermal Label as a standards-compliant OpenDocument Text file directly from the modal.
-- **Adaptive Layout**: Tables transform into mobile-friendly cards on small screens to prevent horizontal scrolling.
-- **Live Recalculation**: Subtotals and grand totals update instantly as you adjust quantities or pricing.
-- **Export Formats**:
-  - 🖨 **Print Manifest**: Professional PDF-ready layout with approval signature lines.
-  - 📊 **CSV Export**: Clean, Excel-ready data distribution with separate columns for Brand and Model.
-
-### 4. Warehouse & Inventory Control — `pages/warehouse.php`
-- **Location Status Tracking**:
-    - **Operational States**: Every zone can be assigned a status like `Working`, `Audit`, `Warehoused`, or `Idle`.
-    - **Color-Coded Badges**: Visual indicators across the gate and header provide immediate context of zone activity.
-    - **Custom Statuses**: Users can define their own status types and associated colors.
+### 3. 🏬 Warehouse Control Center (`pages/warehouse.php`)
+Comprehensive management of physical inventory zones and stock levels.
+- **Zone Status Logic**: Every shelf/zone is assigned a state: `Working` (active intake), `Audit` (verification), `Warehoused` (long-term), or `Idle` (empty).
 - **Advanced Sorting Engine**:
-    - **Weighted Status Sort**: Groups zones logically (Working first, Idle last) rather than just alphabetically.
-    - **Density Sorting**: Sort by "Most Items" or "Emptiest" to optimize shelf space utilization.
-    - **Persistent Preference**: The system remembers your chosen sort order using `localStorage`.
-- **Working Zone Management**: 
-    - **Bulk Rename**: Update all inventory items when a shelf is renamed via the Gate interface.
-- **Enhanced CSV Export**: 
-    - **Smart Mapping**: Automatically sets the "Type" column based on the sector.
-    - **Metadata Rich**: Includes battery health status for laptop exports as requested.
+    - **Weighted Status**: Groups "Working" zones at the top for faster access.
+    - **Density Sort**: Sort by "Most Items" or "Emptiest" to optimize storage footprint.
+- **Optimistic Concurrency**: Prevents "last-writer-wins" data loss. The system verifies `updated_at` timestamps before every save to ensure multiple operators aren't overwriting the same zone.
+- **Smart Mapping Exports**: CSV exports automatically map categories based on sector (e.g., Laptops include Battery Health metadata).
 
-### 5. Global Batch Registry (Orders) — `pages/orders.php`
-Professional administrative oversight for all active and completed batches.
-- **High-Density Table View**: Replaced legacy card layout with a data-dense, professional HTML table for better oversight.
-- **Interactive Sorting**: Dynamic, client-side sorting for **Batch ID**, **Company/Account**, and **Date Created**.
-- **Smart Date Sorting**: The system understands chronological dates (e.g., "Apr 22, 2026") ensuring accurate historical sorting.
-- **Inline Status Management**: Update fulfillment states (Paid, Dispatched, etc.) directly from the table row via AJAX.
-- **Individual Order Deletion**: Remove specific batches and their items from the registry with a dedicated trash icon and confirmation gating.
-- **Order Transfer System**: Specialized utility for fixing assignment errors by relocating batches between accounts instantly.
+### 4. 🛡️ Data Security & Backups (`api/generate_backup.php`)
+Ensures long-term data safety and portability for the entire business database.
+- **One-Click Export**: Administrators can instantly generate a compressed ZIP archive containing every database file in the system.
+- **On-the-Fly Generation**: The system uses memory-efficient streaming to package files, ensuring zero impact on server storage.
+- **Audit Integration**: Every backup event is permanently logged in the System Activity Log for security oversight.
 
-### 6. ODT Label Generation — `generate_odt.php`
+### 5. 📦 Batch Builder & Verification (`pages/new_order.php`, `checkout.php`)
+The core hardware intake and manifest generation workflow.
+- **Live Order Summary**: A searchable, **AJAX-powered** list of added hardware. Items are added instantly without page reloads. Features full-entry inline ✏️ editing and a dynamic **Batch Total QTY** counter that updates in real-time.
+- **Repeat Last Entry**: A "One-Click" productivity tool that pre-fills the intake form with the specs of the previous entry, significantly accelerating repetitive data entry tasks.
+- **Bulk Clipboard Import**: A high-speed intake tool allowing users to paste tab-separated rows directly from spreadsheets. Features automated header detection and robust **Input Guard** sanitization ($/comma stripping).
+- **Checkout Manifest**: A professional verification screen with search-filtered item rows and editable **Order Dates** (backdating/postdating support).
+- **Interactive Row Editor**: Clicking any manifest row opens a glassmorphism modal for full metadata editing with **AJAX Live Sync**—changes update the main UI instantly without a refresh.
+- **Thermal Labeling**: Integrated generation of 2"×1" labels in Flat ODT format, compatible with standard thermal printers.
 
-### 7. Role-Based Access Control (RBAC)
-The application implements a secure, role-based permission system to partition administrative and operational tasks.
-- **User Roles**:
-    - **Admin**: Full access to all system modules, including Customer Registry, Leads, Orders, and Settings. Only the root `admin` account can manage other users.
-    - **Operator**: Restricted access. Automatically redirected to the Warehouse Portal upon login. Cannot access CRM leads, full order registries, or system maintenance tools.
-- **Enforcement**: Access is verified at the routing level in `index.php` and via the `core/auth.php` session guard.
-
-### 8. Real-time Stock Alerts (Concurrency Control)
-To prevent data loss in multi-user environments, the Warehouse module implements an optimistic locking strategy.
-- **Timestamp Sync**: Every inventory item includes an `updated_at` timestamp.
-- **Collision Detection**: When saving changes, the system compares the form's `last_updated_at` with the database's current state.
-- **Collision Response**: If a mismatch is detected (meaning another user saved changes while you were editing), the save is blocked and a **CONCURRENCY_ERROR** alert is displayed.
+### 6. 📈 Historical Trends Engine (`pages/trends.php`)
+A Business Intelligence (BI) dashboard providing live market analytics directly from past transactions.
+- **Dynamic Queries & Filters**: Taps directly into `orders.db` to extract demand velocity, pricing fluctuations, CPU generation dominance, and customer purchasing behavior. Features global **Date Filters** (30 Days, YTD, All Time) altering the SQL queries instantly.
+- **Uncapped Data & Client-Side Sorting**: SQL limits have been removed to expose all historical records in bounded, scrollable lists. Interactive dropdowns utilize lightweight vanilla JS and `data-*` attributes to instantly sort the data (e.g., by Volume, Price, or Date) without page reloads.
+- **Inventory Cross-Referencing**: Uses `Database::queryIntegrated()` to attach `warehouse.db` to sales velocity metrics. It dynamically surfaces exact stock locations (e.g., `Zone-A`) and flags hardware currently processing in Audit or Working states.
+- **Interactive UI**: A four-tab glassmorphic interface (Model Demand, Pricing Curves, CPU Generations, Customer Insights) providing deep operational insights, supplemented by Top-10 pure-CSS vertical bar charts.
 
 ---
 
 ## 🛠 Technical Architecture
 
-### 1. Centralized Database Manager (`core/database.php`)
-The system utilizes a **Singleton Pattern** to manage multiple SQLite connections efficiently.
-- **Connection Pooling**: `Database::getConnection($db_name)` ensures only one PDO instance exists per database file during a request.
-- **Cross-DB Joining**: The manager supports the `ATTACH DATABASE` command, allowing complex JOIN queries between `customers.db` and `orders.db` at the database engine level, eliminating slow PHP-side loops.
+### 1. Centralized Schema & Self-Healing Architecture
+The system employs a **Blueprint-first** approach managed via `core/Schema.php`. 
+- **Auto-Provisioning**: Upon every database connection (`getConnection`), the system verifies all tables and columns against the central blueprint. 
+- **Graceful Migrations**: Schema evolutions (adding new columns like `price` or `updated_at`) are handled globally, ensuring all operator nodes are in sync without manual DB scripts.
 
-### 2. Session & Security Hardening
-- **Session Fixation Protection**: The system rotates the session ID using `session_regenerate_id(true)` upon successful login to prevent hijacking.
-- **Auto-Redirection**: Authenticated users are automatically redirected away from the login page to their appropriate dashboard based on their role.
-- **Distributed SQLite**: Data is partitioned into modular `.db` files (Customers, Orders, Users, Warehouse) to minimize lock contention and improve portability.
+### 2. Integrated Query Engine & Cross-DB Joins
+Managed via `core/database.php`, the system performs engine-level joins across modular SQLite databases.
+- **Unified Joins**: The `Database::queryIntegrated()` helper allows for seamless retrieval of data across `customers.db`, `orders.db`, and `warehouse.db` in a single SQL operation.
+- **Aggregated Performance**: Dashboard KPIs (Lifetime Value, Order Counts) and list views are accelerated by **Engine-level Indexes** (e.g., `idx_items_order`), ensuring snappy performance even with thousands of records.
 
-### 3. Mobile-First & iOS Safari Optimizations
-- **16px Input Enforcement**: All modal inputs use `font-size: 16px !important` to prevent iOS Safari auto-zoom on focus.
-- **Dynamic Viewport Height**: Overlay uses `100dvh` so it fits correctly behind Safari's collapsible toolbar.
-- **Momentum Scrolling**: Modal content uses `-webkit-overflow-scrolling: touch` for native-feel scrolling when the keyboard appears.
-- **Clipboard Fallback**: Copy-to-clipboard uses `navigator.clipboard` with a hidden `<textarea>` fallback for non-HTTPS contexts (older Safari).
+### 3. Intelligent Vocabulary & Caching
+To ensure data consistency and reduce intake errors, the system maintains a "Self-Learning" vocabulary with **Instant-Load Caching**.
+- **Dynamic Suggestions**: Every brand, model, and CPU entered into the system becomes a suggestion for future entries.
+- **sessionStorage Caching**: Vocabulary is cached in the browser's session storage. On page load, datalists are populated instantly from the cache, while a silent background sync ensures data stays fresh for the next navigation.
 
-### JS Architecture & State Management
-- **Decoupled JSON State**: The application no longer pollutes the global `window` namespace with PHP variables. Instead, state is injected into the DOM as `application/json` script blocks and parsed by dedicated getter functions in JS (e.g., `getCheckoutState()`).
-- **Scalable Routing**: `index.php` utilizes a centralized route mapping array that manages both page inclusions and contextual CSS loading, eliminating large conditional blocks.
-- **External Logic Modules**: All functional logic is encapsulated in external modules (e.g., `assets/js/checkout.js`) which are versioned dynamically via PHP `filemtime()` to ensure instant cache updates upon modification.
-- **API Integration**: Core actions like order status updates and transfers are handled via asynchronous `fetch` calls to dedicated PHP scripts in the `/api/` directory.
+### 4. Audit & System Accountability
+A global logging layer (`core/Audit.php`) tracks every sensitive operation with built-in **DB Resilience**.
+- **Immutable Record**: Actions such as deleting customers or changing fulfillment states are recorded with a user ID, timestamp, and IP address.
+- **File-based Fallback**: If the SQLite database is temporarily unavailable (e.g., file locking), the system automatically writes logs to `orders/logs/audit_fallback.log`, ensuring no activity goes untracked.
+- **Admin Oversight**: Administrators can access the **System Activity Log** in settings for full operational transparency.
 
----
+### 5. Frontend State & UI Design
+- **Decoupled JSON State**: State is passed from PHP to JS via `<script type="application/json">` blocks, preventing global variable collisions and ensuring data integrity.
+- **Design System**: Built on Vanilla CSS variables with a focus on glassmorphism and modern typography (Outfit/Inter).
+- **Navigation Console**: A consolidated Hamburger dropdown (`☰`) replaces traditional breadcrumbs. It auto-dismisses, is responsive, and enforces RBAC (gating admin links from operators).
+- **iOS Safari Optimizations**:
+    - **Zoom Prevention**: All inputs use `16px` font enforcement to block iOS auto-zoom on focus.
+    - **Dynamic Viewports**: Layouts use `100dvh` to fit perfectly behind the Safari toolbar.
 
-## 📂 Project Structure
-
-```bash
-├── api/               # Decoupled JSON API endpoints
-│   ├── get_warehouse_stock.php
-│   ├── get_interaction_logs.php # Fetches CRM history for a customer
-│   ├── save_lead.php            # Updates CRM metadata and logs interactions
-│   ├── update_order_status.php
-│   └── transfer_order.php
-├── assets/
-│   ├── db/            # SQLite databases (Blocked from public access via .htaccess)
-│   ├── js/
-│   │   ├── checkout.js   # All checkout manifest JS logic
-│   │   ├── warehouse.js  # Warehouse inventory logic
-│   │   └── new_order.js  # Batch builder JS logic
-│   ├── styles/        # Per-page CSS files
-│   └── ts/            # TypeScript source (Legacy/Dev reference)
-├── core/              # Authentication and shared logic
-│   ├── auth.php
-│   ├── login.php
-│   └── logout.php
-├── pages/             # Page fragments included by index.php
-│   ├── customer_registry.php
-│   ├── new_customer.php
-│   ├── new_order.php
-│   ├── orders.php
-│   ├── warehouse.php
-│   └── settings.php
-├── DOCS/
-│   └── DOCUMENTATION.md
-├── index.php          # Main application gateway & router
-├── checkout.php       # Verification, modal editor & export hub
-├── generate_odt.php   # 2×1 Thermal Label ODT generator
-└── README.md
-```
+### 6. Security & Access Control
+- **RBAC Guard**: Sessions are verified in `core/auth.php`. Administrators have full system access, while **Operators** are strictly locked to the Warehouse Portal.
+- **Global CSRF Enforcement**: Every state-changing request (AJAX or Form) is verified against a session-locked token generated by `core/Security.php`.
 
 ---
 
-## ⚙️ Maintenance & Troubleshooting
+## 📂 Project Structure Map
 
-### Database Cleanup
-To keep the registry tidy, admins can use the **Cleanup Tool** in the Settings menu. This utility cross-references the `customers` and `orders` databases to identify and safely remove profiles that have never been used in a transaction.
+- `api/`: AJAX endpoints (JSON) for status updates, transfers, and CRM interaction logging.
+- `assets/db/`: Protected SQLite databases (blocked from HTTP access via `.htaccess`).
+- `assets/js/`: View-specific logic (e.g., `checkout.js`, `warehouse.js`, `leads.js`).
+- `core/`: Shared logic, auth guards, and the central database manager.
+- `pages/`: View fragments included by the main `index.php` router.
 
-### Label Generation
-`generate_odt.php` uses PHP's native `file_put_contents()` and `tempnam()` — no extensions required. If a label downloads but doesn't open, ensure LibreOffice or compatible software is set as the default handler for `.odt` files on your device.
+---
 
-### Critical Paths
-The application utilizes `realpath()` for all database attachments. This ensures that the SQLite `ATTACH DATABASE` commands resolve correctly, even when pages are included deep within the folder hierarchy.
-
-### iOS Safari Notes
-- The app is fully tested on Safari for iOS. Ensure the server is accessed over HTTPS or localhost for the `navigator.clipboard` API to be available; otherwise the fallback `execCommand('copy')` is used automatically.
+> [!TIP]
+> **Maintenance**: Use the **Cleanup Tool** in Settings to identify and remove unused customer profiles to keep the registry high-performance.

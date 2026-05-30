@@ -14,21 +14,28 @@ document.addEventListener('DOMContentLoaded', () => {
     initWarehouseDatalists();
     initCpuGenChips();
 
-    // Auto-hide success messages
-    const msgBanner = document.getElementById('wh-msg-banner');
-    if (msgBanner) {
-        setTimeout(() => {
-            msgBanner.style.opacity = '0';
-            msgBanner.style.transform = 'translateY(-10px)';
-            setTimeout(() => msgBanner.remove(), 500);
+    // Session Counter Logic
+    initSessionCounter();
+    if (window.location.search.includes('msg=added')) {
+        incrementSessionCounter();
+    }
 
-            // Clean URL without refresh
+    // Re-apply persistent search
+    const savedSearch = sessionStorage.getItem('wh_active_search');
+    const searchIn = document.getElementById('wh-search');
+    const footerIn = document.getElementById('wh-search-footer');
+    if (savedSearch && (searchIn || footerIn)) {
+        if (searchIn) searchIn.value = savedSearch;
+        if (footerIn) footerIn.value = savedSearch;
+        filterWarehouse();
+    }
+
+    // Immediately strip hash to prevent "jumping" during search DOM updates
+    if (window.location.hash) {
+        setTimeout(() => {
             const url = new URL(window.location);
-            if (url.searchParams.has('msg')) {
-                url.searchParams.delete('msg');
-                window.history.replaceState({}, '', url);
-            }
-        }, 1500); // Snappy dismissal (1.5s)
+            window.history.replaceState({}, '', url.pathname + url.search);
+        }, 100);
     }
 
     // Save form data to localStorage on submit
@@ -73,7 +80,7 @@ function fillLastEnteredData() {
     if (!form) return;
 
     // Direct mapping for common fields
-    const fields = ['brand', 'model', 'quantity', 'condition', 'notes', 'cpu', 'gpu', 'ram', 'storage', 'battery', 'windows', 'series', 'gen', 'cpu_gen', 'gaming_category'];
+    const fields = ['brand', 'model', 'quantity', 'price', 'condition', 'notes', 'cpu', 'gpu', 'ram', 'storage', 'battery', 'windows', 'series', 'gen', 'cpu_gen', 'gaming_category'];
 
     fields.forEach(f => {
         if (form[f] && data[f] !== undefined) {
@@ -200,8 +207,43 @@ function initWarehouseDatalists() {
                     }
                 }
             }
+            highlightExistingMatches();
         });
     }
+
+    if (brandIn) {
+        brandIn.addEventListener('input', highlightExistingMatches);
+        brandIn.addEventListener('change', highlightExistingMatches);
+    }
+}
+
+/**
+ * Highlights rows in the table that match the current Brand and Model in the form
+ */
+function highlightExistingMatches() {
+    const brand = document.getElementById('wh-brand').value.toLowerCase().trim();
+    const model = document.getElementById('wh-model').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.inventory-card');
+
+    cards.forEach(card => {
+        const cardBrand = card.getAttribute('data-brand').toLowerCase();
+        const cardModel = card.getAttribute('data-model').toLowerCase();
+
+        // Clear existing match highlight
+        card.classList.remove('match-highlight');
+
+        if (brand && model) {
+            if (cardBrand.includes(brand) && cardModel.includes(model)) {
+                card.classList.add('match-highlight');
+            }
+        } else if (brand || model) {
+            // Partial match if only one is filled
+            const target = brand || model;
+            if (cardBrand.includes(target) || cardModel.includes(target)) {
+                // Subtle highlight for partial
+            }
+        }
+    });
 }
 
 /**
@@ -252,21 +294,63 @@ function toggleGamingFields() {
 }
 
 /**
+ * Synchronizes the two search bars (Header and Footer) and filters the table
+ */
+function syncSearch(inputEl) {
+    // 1. Capture current position relative to viewport (prevents jumping)
+    const rect = inputEl.getBoundingClientRect();
+    const offsetTop = rect.top;
+
+    // 2. Clear hash to prevent "jumping" if an anchor is in the URL
+    if (window.location.hash) {
+        window.history.replaceState({}, '', window.location.pathname + window.location.search);
+    }
+
+    const otherId = inputEl.id === 'wh-search' ? 'wh-search-footer' : 'wh-search';
+    const otherEl = document.getElementById(otherId);
+    if (otherEl) otherEl.value = inputEl.value;
+
+    // 3. Persist search for session
+    sessionStorage.setItem('wh_active_search', inputEl.value);
+
+    // 4. Perform filter
+    filterWarehouse();
+
+    // 5. Restore position (especially important for footer search)
+    if (inputEl.id === 'wh-search-footer') {
+        const newRect = inputEl.getBoundingClientRect();
+        const diff = newRect.top - offsetTop;
+        window.scrollBy(0, diff);
+    }
+}
+
+/**
  * Filters the warehouse inventory list based on search input
  */
 function filterWarehouse() {
     const searchInput = document.getElementById('wh-search');
-    if (!searchInput) return;
+    const footerInput = document.getElementById('wh-search-footer');
+    if (!searchInput && !footerInput) return;
 
-    const filter = searchInput.value.toLowerCase();
+    // Get search text from whichever input is available
+    const rawValue = (searchInput ? searchInput.value : "") || (footerInput ? footerInput.value : "");
+    const terms = rawValue.toLowerCase().split(' ').filter(t => t.trim() !== '');
+
     const cards = document.getElementsByClassName('inventory-card');
+    const noResultsRow = document.getElementById('wh-no-results');
 
     let visibleQtyTotal = 0;
+    let visibleCount = 0;
 
     for (let i = 0; i < cards.length; i++) {
-        const text = cards[i].getAttribute('data-search') || "";
-        if (text.toLowerCase().includes(filter)) {
+        const text = (cards[i].getAttribute('data-search') || "").toLowerCase();
+        
+        // Every term must be present in the text (AND logic)
+        const isMatch = terms.every(term => text.includes(term));
+
+        if (isMatch) {
             cards[i].style.display = "";
+            visibleCount++;
             const qtyPill = cards[i].querySelector('.qty-pill');
             if (qtyPill) {
                 visibleQtyTotal += parseInt(qtyPill.innerText, 10) || 0;
@@ -274,6 +358,11 @@ function filterWarehouse() {
         } else {
             cards[i].style.display = "none";
         }
+    }
+
+    // Toggle No Results Visual
+    if (noResultsRow) {
+        noResultsRow.style.display = (visibleCount === 0 && terms.length > 0) ? "" : "none";
     }
 
     // Update the total qty row if it exists
@@ -331,49 +420,49 @@ function sortGateLocations() {
     setTimeout(() => {
         // Get all children that are zone items or their wrappers
         const items = Array.from(grid.children);
-    const zoneItems = items.filter(el => el.classList.contains('loc-item-wrapper'));
-    const newLocItem = items.find(el => el.classList.contains('new_loc') || el.classList.contains('new-loc'));
+        const zoneItems = items.filter(el => el.classList.contains('loc-item-wrapper'));
+        const newLocItem = items.find(el => el.classList.contains('new_loc') || el.classList.contains('new-loc'));
 
-    const statusPriority = {
-        'working': 1,
-        'audit': 2,
-        'shipping': 3,
-        'in-review': 4,
-        'warehoused': 5,
-        'idle': 6
-    };
+        const statusPriority = {
+            'working': 1,
+            'audit': 2,
+            'shipping': 3,
+            'in-review': 4,
+            'warehoused': 5,
+            'idle': 6
+        };
 
-    zoneItems.sort((a, b) => {
-        const itemA = a.querySelector('.gate-loc-item');
-        const itemB = b.querySelector('.gate-loc-item');
-        if (!itemA || !itemB) return 0;
+        zoneItems.sort((a, b) => {
+            const itemA = a.querySelector('.gate-loc-item');
+            const itemB = b.querySelector('.gate-loc-item');
+            if (!itemA || !itemB) return 0;
 
-        const nameA = itemA.getAttribute('data-loc-name') || "";
-        const nameB = itemB.getAttribute('data-loc-name') || "";
-        const countA = parseInt(itemA.getAttribute('data-count') || "0", 10);
-        const countB = parseInt(itemB.getAttribute('data-count') || "0", 10);
-        const statusA = itemA.getAttribute('data-status') || "idle";
-        const statusB = itemB.getAttribute('data-status') || "idle";
+            const nameA = itemA.getAttribute('data-loc-name') || "";
+            const nameB = itemB.getAttribute('data-loc-name') || "";
+            const countA = parseInt(itemA.getAttribute('data-count') || "0", 10);
+            const countB = parseInt(itemB.getAttribute('data-count') || "0", 10);
+            const statusA = itemA.getAttribute('data-status') || "idle";
+            const statusB = itemB.getAttribute('data-status') || "idle";
 
-        if (sortVal === 'asc') return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-        if (sortVal === 'desc') return nameB.localeCompare(nameA, undefined, { numeric: true, sensitivity: 'base' });
-        
-        if (sortVal === 'count-desc') return countB - countA || nameA.localeCompare(nameB);
-        if (sortVal === 'count-asc') return countA - countB || nameA.localeCompare(nameB);
-        
-        if (sortVal === 'status') {
-            const prioA = statusPriority[statusA] || 99;
-            const prioB = statusPriority[statusB] || 99;
-            return prioA - prioB || nameA.localeCompare(nameB);
-        }
-        
-        return 0;
-    });
+            if (sortVal === 'asc') return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+            if (sortVal === 'desc') return nameB.localeCompare(nameA, undefined, { numeric: true, sensitivity: 'base' });
+
+            if (sortVal === 'count-desc') return countB - countA || nameA.localeCompare(nameB);
+            if (sortVal === 'count-asc') return countA - countB || nameA.localeCompare(nameB);
+
+            if (sortVal === 'status') {
+                const prioA = statusPriority[statusA] || 99;
+                const prioB = statusPriority[statusB] || 99;
+                return prioA - prioB || nameA.localeCompare(nameB);
+            }
+
+            return 0;
+        });
 
         // Re-append in order
         zoneItems.forEach(el => grid.appendChild(el));
         if (newLocItem) grid.appendChild(newLocItem);
-        
+
         grid.classList.remove('sorting');
     }, 300);
 }
@@ -398,7 +487,7 @@ function editWarehouseItem(item) {
     editId.value = item.id;
     const lastUpdatedInput = document.getElementById('wh-last-updated');
     if (lastUpdatedInput) lastUpdatedInput.value = item.updated_at;
-    
+
     submitBtn.innerText = '💾 Save Changes';
     cancelBtn.style.display = 'block';
 
@@ -406,6 +495,7 @@ function editWarehouseItem(item) {
     form.brand.value = item.brand;
     form.model.value = item.model;
     form.quantity.value = item.quantity;
+    form.price.value = item.price || '0.00';
 
     // 3. Pre-fill Specs (parsing JSON)
     const specs = JSON.parse(item.specs_json || '{}');
@@ -501,6 +591,8 @@ function downloadWarehouseCSV() {
             const model = card.getAttribute('data-model') || '';
             const qtyElement = card.querySelector('.qty-pill');
             const qty = qtyElement ? qtyElement.innerText.trim() : '0';
+            const price = card.getAttribute('data-price') || '0.00';
+            const total = (parseFloat(price) * parseInt(qty)).toFixed(2);
 
             const locTag = card.querySelector('.location-tag');
             const itemLoc = locTag ? locTag.innerText.trim() : '';
@@ -511,7 +603,7 @@ function downloadWarehouseCSV() {
                 cpuGen = specs.cpu_gen || '';
             }
             const sectorTheme = card.getAttribute('data-sector-theme') || 'Laptops';
-            
+
             // Build a richer description for the CSV (includes requested battery info)
             let specHighlights = "";
             if (sectorTheme === 'Laptops') {
@@ -538,9 +630,9 @@ function downloadWarehouseCSV() {
                 sanitize(specs.series || ""),    // Series
                 sanitize(cpuGen),                // CPU / Gen
                 sanitize(fullDesc),              // Description
-                "0.00",                          // Price (Not stored in warehouse)
+                sanitize(price),                 // Price
                 sanitize(qty),                   // QTY
-                "0.00"                           // Total
+                sanitize(total)                  // Total
             ];
 
             if (isGlobal) rowData.unshift(sanitize(itemLoc));
@@ -567,4 +659,149 @@ function downloadWarehouseCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+/**
+ * Initializes the session counter from sessionStorage
+ */
+function initSessionCounter() {
+    const counter = document.getElementById('session-counter');
+    const valSpan = document.getElementById('session-count-val');
+    if (!counter || !valSpan) return;
+
+    let count = parseInt(sessionStorage.getItem('wh_session_added') || '0', 10);
+    if (count > 0) {
+        valSpan.innerText = count;
+        counter.style.display = 'block';
+    }
+}
+
+/**
+ * Increments the session counter and saves to sessionStorage
+ */
+function incrementSessionCounter() {
+    let count = parseInt(sessionStorage.getItem('wh_session_added') || '0', 10);
+    count++;
+    sessionStorage.setItem('wh_session_added', count);
+
+    const valSpan = document.getElementById('session-count-val');
+    if (valSpan) valSpan.innerText = count;
+
+    const counter = document.getElementById('session-counter');
+    if (counter) counter.style.display = 'block';
+}
+
+// ─── BULK ACTIONS LOGIC ──────────────────────────────────────────────────────
+
+let selectedIds = new Set();
+const DOM = {
+    selectAll: document.getElementById('selectAll'),
+    bulkBar: document.getElementById('bulkActionBar'),
+    selectedCount: document.getElementById('selectedCount'),
+    tbody: document.getElementById('inventory-list')
+};
+
+function updateBulkBar() {
+    const count = selectedIds.size;
+    if (DOM.selectedCount) DOM.selectedCount.textContent = count;
+    if (DOM.bulkBar) DOM.bulkBar.style.display = count > 0 ? 'flex' : 'none';
+}
+
+if (DOM.selectAll) {
+    DOM.selectAll.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        const checkboxes = DOM.tbody.querySelectorAll('.row-select');
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+            const tr = cb.closest('tr');
+            const id = tr.dataset.id;
+            if (isChecked) {
+                selectedIds.add(id);
+                tr.classList.add('selected-row');
+            } else {
+                selectedIds.delete(id);
+                tr.classList.remove('selected-row');
+            }
+        });
+        updateBulkBar();
+    });
+}
+
+if (DOM.tbody) {
+    DOM.tbody.addEventListener('change', (e) => {
+        if (e.target.classList.contains('row-select')) {
+            const tr = e.target.closest('tr');
+            const id = tr.dataset.id;
+            if (e.target.checked) {
+                selectedIds.add(id);
+                tr.classList.add('selected-row');
+            } else {
+                selectedIds.delete(id);
+                tr.classList.remove('selected-row');
+                if (DOM.selectAll) DOM.selectAll.checked = false;
+            }
+            updateBulkBar();
+        }
+    });
+}
+
+const cancelBulkBtn = document.getElementById('cancelBulkBtn');
+if (cancelBulkBtn) {
+    cancelBulkBtn.addEventListener('click', () => {
+        selectedIds.clear();
+        if (DOM.selectAll) DOM.selectAll.checked = false;
+        DOM.tbody.querySelectorAll('.row-select').forEach(cb => {
+            cb.checked = false;
+            cb.closest('tr').classList.remove('selected-row');
+        });
+        updateBulkBar();
+    });
+}
+
+const applyBulkBtn = document.getElementById('applyBulkBtn');
+if (applyBulkBtn) {
+    applyBulkBtn.addEventListener('click', async () => {
+        const location = document.getElementById('bulkLocation').value.trim();
+        const price = document.getElementById('bulkPrice').value.trim();
+        
+        if (!location && !price) {
+            alert("Please specify a new location or price to apply.");
+            return;
+        }
+
+        if (!confirm(`Apply changes to ${selectedIds.size} items?`)) return;
+
+        applyBulkBtn.disabled = true;
+        applyBulkBtn.textContent = '⌛ Applying...';
+
+        try {
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+            const response = await fetch('api/bulk_update_inventory.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    csrf_token: csrfToken,
+                    ids: Array.from(selectedIds),
+                    location: location,
+                    price: price
+                })
+            });
+
+            const json = await response.json();
+            if (json.success) {
+                IQA_Notify.success(`Successfully updated ${selectedIds.size} items!`);
+                selectedIds.clear();
+                if (DOM.selectAll) DOM.selectAll.checked = false;
+                updateBulkBar();
+                window.location.reload(); // Refresh to show new locations/prices
+            } else {
+                IQA_Notify.error(`Error: ${json.error}`);
+            }
+        } catch (err) {
+            IQA_Notify.error("Network error during bulk update.");
+        } finally {
+            applyBulkBtn.disabled = false;
+            applyBulkBtn.textContent = 'Apply Batch Changes';
+        }
+    });
 }
