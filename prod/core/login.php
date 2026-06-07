@@ -22,7 +22,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'ajax_generate_ppp') {
         echo json_encode(['success' => false, 'error' => 'Invalid sequence key']);
         exit();
     }
-    
+
     function generate_ppp_passcodes($sequence_key, $cell_len = 4) {
         $alphabet = '!#%+23456789:=?@ABCDEFGHJKLMNPRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
         $key_bin = hex2bin($sequence_key);
@@ -210,13 +210,13 @@ try {
 
         <div class="login-footer multi-link-container" style="position: relative;">
             <small>&copy; <?= date('M, Y') ?> <span class="linked-text-info" style="cursor: pointer; text-decoration: underline; font-weight: bold;">System</span> | Secured Batch fulfillment</small>
-            
+
             <!-- Hidden Dialog Container containing the PPP Card -->
             <div class="info-dialog" id="dialog_ppp_card" style="max-width: 600px; width: 95%; text-align: left; color: #1e293b; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.25);">
                 <button type="button" class="btn-close-dialog" aria-label="Close dialog">&times;</button>
                 <div style="font-family: system-ui, -apple-system, sans-serif;">
                     <h2 style="font-size: 1.25rem; font-weight: 800; margin-top: 0; margin-bottom: 15px; color: #1e293b; display: flex; align-items: center; gap: 8px;">🔑 Perfect Paper Passwords (PPP)</h2>
-                    
+
                     <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; align-items: center;">
                         <div style="flex: 1; min-width: 120px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Password Length Range</label>
@@ -230,14 +230,16 @@ try {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
                         <button type="button" onclick="triggerGenKey()" style="background: #64748b; color: white; padding: 10px 16px; font-size: 0.85rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 800;">🎲 Gen Key</button>
                         <button type="button" onclick="applyManualKey()" style="background: #4f46e5; color: white; padding: 10px 16px; font-size: 0.85rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 800; flex: 1;">🔍 Load Grid</button>
                     </div>
 
                     <div id="qr-container-wrapper" style="display: none; flex-direction: column; align-items: center; justify-content: center; background: white; padding: 10px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
-                        <img id="ppp_qr_img" src="" alt="PPP QR Code" style="width: 100px; height: 100px; border-radius: 8px; display: block;">
+                        <a id="ppp_qr_link" href="#" target="_blank" title="Click to open QR Code in new tab" style="cursor: pointer; display: block;">
+                            <img id="ppp_qr_img" src="" alt="PPP QR Code" style="width: 100px; height: 100px; border-radius: 8px; display: block;">
+                        </a>
                         <span style="font-size: 0.6rem; color: #64748b; font-weight: 800; margin-top: 4px; text-transform: uppercase;">Sequence QR Code</span>
                     </div>
 
@@ -312,6 +314,10 @@ try {
         if (qrImg) {
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodedKey}`;
         }
+        const qrLink = document.getElementById('ppp_qr_link');
+        if (qrLink) {
+            qrLink.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodedKey}`;
+        }
 
         // Fetch grid preview
         fetchGridPreview(activeSeqKey);
@@ -336,7 +342,14 @@ try {
 
         // Update QR image
         const encodedKey = encodeURIComponent(activeSeqKey);
-        document.getElementById('ppp_qr_img').src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodedKey}`;
+        const qrImg = document.getElementById('ppp_qr_img');
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodedKey}`;
+        }
+        const qrLink = document.getElementById('ppp_qr_link');
+        if (qrLink) {
+            qrLink.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodedKey}`;
+        }
 
         selectedRowIdx = 0;
         fetchGridPreview(activeSeqKey);
@@ -396,6 +409,17 @@ try {
                 tr.appendChild(tdCell);
             }
             tbody.appendChild(tr);
+        }
+
+        // Update QR image and link dynamically on grid load
+        const encodedKey = encodeURIComponent(seqKey);
+        const qrImg = document.getElementById('ppp_qr_img');
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodedKey}`;
+        }
+        const qrLink = document.getElementById('ppp_qr_link');
+        if (qrLink) {
+            qrLink.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodedKey}`;
         }
 
         updatePrintCardSource(passcodes, seqKey);
