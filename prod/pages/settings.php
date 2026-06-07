@@ -343,12 +343,12 @@ try {
                             <li style="margin-bottom: 6px;"><strong>Print the Card:</strong> Click the "Print Secure Passcard" button below and print a physical copy. Keep it safely in your wallet.</li>
                             <li style="margin-bottom: 6px;"><strong>Passcode Grid:</strong> The card contains a grid of 50 unique passcodes indexed from Row 01 to 10 and Columns A to E.</li>
                             <li style="margin-bottom: 6px;"><strong>Authentication:</strong> When signing in, the system will ask you to enter a passcode from a specific cell (e.g. <code>03-B</code>). Find that cell on your printed card and type the characters.</li>
-                            <li style="margin-bottom: 6px;"><strong>One-Time Use:</strong> Once you use a passcode, cross it off your card. It can never be reused.</li>
+                            <li style="margin-bottom: 6px;"><strong>One-Time Use:</strong> Once you use a passcode, you are in. (<i>If you log out and do not know your password, please tell the Admin ASAP</i>)</li>
                             <li style="margin-bottom: 6px;"><strong>No Secrets Stored Online:</strong> The server only stores a master Sequence Key, never the passcodes themselves.</li>
                         </ul>
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 0.8rem; color: #64748b; font-style: italic;">
-                            Tip: If your physical card is lost or compromised, change your password to automatically generate a brand new card.<br><br>
-                            <strong>Important Note:</strong> To reprint or regenerate your original passcard, you MUST keep a backup of both your 64-character Sequence Key and the corresponding Password Length Range (e.g., 30).
+                            Tip: If your physical card is lost or compromised, change your password and automatically generate a brand new card.<br><br>
+                            <strong>Important Note:</strong> To reprint or regenerate your original passcard, you MUST keep a backup of both your 64-character <strong style="color: black">Sequence Key</strong> and the corresponding <strong style="color: black">Password Length</strong> (e.g., 30).
                         </div>
                     </div>
                 </div>
@@ -377,10 +377,10 @@ try {
                     <?php if ($is_forced): ?>
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <button type="button" class="btn-main" onclick="triggerGenKey()" style="background:#64748b; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">🎲 Gen Key</button>
-                            
+
                             <div class="multi-link-container" style="position: relative;">
                                 <button type="button" class="btn-main linked-text-info" style="background:#4f46e5; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">🔍 Verify & Load Key</button>
-                                
+
                                 <!-- Input Sequence Key Dialog -->
                                 <div class="info-dialog" id="dialog_seq_key" style="max-width: 500px; width: 90%;">
                                     <button type="button" class="btn-close-dialog" aria-label="Close dialog">&times;</button>
@@ -508,10 +508,10 @@ try {
                             <button type="button" class="btn-main" onclick="triggerGenKey()" style="background:#64748b; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">
                                 🎲 Gen Key
                             </button>
-                            
+
                             <div class="multi-link-container" style="position: relative;">
                                 <button type="button" class="btn-main linked-text-info" style="background:#4f46e5; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">🔍 Verify & Load Key</button>
-                                
+
                                 <!-- Input Sequence Key Dialog -->
                                 <div class="info-dialog" id="dialog_seq_key_secure" style="max-width: 500px; width: 90%;">
                                     <button type="button" class="btn-close-dialog" aria-label="Close dialog">&times;</button>
@@ -567,7 +567,7 @@ try {
         const isValid = /^[a-fA-F0-9]{64}$/.test(val.trim());
         const errForced = document.getElementById('manual_key_error_forced');
         const errSecure = document.getElementById('manual_key_error_secure');
-        
+
         if (errForced) {
             errForced.style.display = (val.trim() === '' || isValid) ? 'none' : 'block';
         }
@@ -580,32 +580,32 @@ try {
         const inputId = isForced ? 'manual_seq_key_input_forced' : 'manual_seq_key_input_secure';
         const inputEl = document.getElementById(inputId);
         if (!inputEl) return;
-        
+
         const rawVal = inputEl.value.trim();
         if (!/^[a-fA-F0-9]{64}$/.test(rawVal)) {
             alert("Please enter a valid 64-character hexadecimal Sequence Key first.");
             return;
         }
-        
+
         pendingSeqKey = rawVal.toUpperCase();
-        
+
         // Update display key text field and hidden inputs
         const displayKeyInput = document.getElementById('ppp_display_key');
         if (displayKeyInput) {
             displayKeyInput.value = pendingSeqKey;
         }
         document.getElementById('ppp_sequence_key_input').value = pendingSeqKey;
-        
+
         // Reset selected row
         selectedRowIdx = 0;
         document.getElementById('ppp_row_index_input').value = '0';
-        
+
         // Show QR and grid preview if they are hidden
         const qrWrapper = document.getElementById('qr-container-wrapper');
         if (qrWrapper) qrWrapper.style.display = 'flex';
         const gridSection = document.getElementById('ppp-grid-section');
         if (gridSection) gridSection.style.display = 'block';
-        
+
         // Update QR images
         const encodedKey = encodeURIComponent(pendingSeqKey);
         const qrImg = document.getElementById('ppp_qr_img');
@@ -616,7 +616,7 @@ try {
         if (qrLargeImg) {
             qrLargeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedKey}`;
         }
-        
+
         // Uncheck show-active checkbox
         const showActiveCheckbox = document.getElementById('ppp_show_active_checkbox');
         if (showActiveCheckbox) {
@@ -626,15 +626,15 @@ try {
         if (showActiveContainer) {
             showActiveContainer.style.display = 'flex';
         }
-        
+
         // Fetch new grid preview
         fetchGridPreview(pendingSeqKey);
-        
+
         // Close modal
         if (window.dialogEngine) {
             window.dialogEngine.closeAnyOpenDialogs();
         }
-        
+
         // Scroll to PPP grid
         const pppCard = document.getElementById('ppp-card');
         if (pppCard) {
@@ -766,12 +766,20 @@ try {
             qrLargeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedKey}`;
         }
 
+        const footerLengthSpan = document.getElementById('ppp-card-footer-length');
+        if (footerLengthSpan) {
+            footerLengthSpan.innerText = length;
+        }
+
         updatePrintCardSource(passcodes, seqKey);
     }
 
     function updatePrintCardSource(passcodes, seqKey) {
         const source = document.getElementById('ppp-printable-card-source');
         if (!source) return;
+
+        const lengthInput = document.getElementById('ppp_length_input');
+        const length = lengthInput ? (parseInt(lengthInput.value) || 30) : 30;
 
         let tableRowsHtml = '';
         for (let r = 0; r < 25; r++) {
@@ -811,7 +819,7 @@ try {
                     </tbody>
                 </table>
                 <div style="margin-top: 15px; text-align: center; font-size: 9px; color: #666; border-top: 1px solid #eee; padding-top: 8px;">
-                    GRC Perfect Paper Passwords &bull; Keep this card secure and offline.
+                    GRC Perfect Paper Passwords &bull; Password Length: ${length} &bull; Keep this card secure and offline.
                 </div>
             </div>
         `;

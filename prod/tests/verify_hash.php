@@ -73,7 +73,7 @@ function gen_multi_block($seq_key, $alphabet, $cell_len) {
 // Loop through all possible password lengths
 for ($length = 25; $length <= 125; $length++) {
     $cell_len = (int)ceil($length / 5.0);
-    
+
     // We only need to check each unique cell_len once.
     // Lengths: 25 -> cell_len 5.
     // 26, 27, 28, 29, 30 -> cell_len 6.
