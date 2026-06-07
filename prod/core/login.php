@@ -27,6 +27,7 @@ try {
         role TEXT DEFAULT 'Operator',
         ppp_sequence_key TEXT DEFAULT '',
         ppp_row_index INTEGER DEFAULT 0,
+        ppp_password_len INTEGER DEFAULT 55,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
@@ -45,6 +46,9 @@ try {
     }
     if (!in_array('ppp_row_index', $col_names)) {
         $conn_auth->exec("ALTER TABLE users ADD COLUMN ppp_row_index INTEGER DEFAULT 0");
+    }
+    if (!in_array('ppp_password_len', $col_names)) {
+        $conn_auth->exec("ALTER TABLE users ADD COLUMN ppp_password_len INTEGER DEFAULT 55");
     }
 
     // Seed default user if empty (admin / 123)

@@ -15,12 +15,15 @@ try {
     $conn_u = Database::users();
 
     $username = $_SESSION['username'];
-    $stmt_ppp = $conn_u->prepare("SELECT ppp_sequence_key, ppp_row_index FROM users WHERE username = ?");
+    $stmt_ppp = $conn_u->prepare("SELECT ppp_sequence_key, ppp_row_index, ppp_password_len FROM users WHERE username = ?");
     $stmt_ppp->execute([$username]);
     $user_row = $stmt_ppp->fetch(PDO::FETCH_ASSOC);
     $seq_key = $user_row['ppp_sequence_key'] ?? '';
     $saved_row_index = (int)($user_row['ppp_row_index'] ?? 0);
-    $saved_pass_len = (int)($_SESSION['ppp_password_len'] ?? 30);
+    $saved_pass_len = (int)($user_row['ppp_password_len'] ?? ($_SESSION['ppp_password_len'] ?? 30));
+    if ($saved_pass_len < 25) {
+        $saved_pass_len = 30;
+    }
 
     // Helper to generate PPP passcodes
     // Algorithm designed by Steve Gibson (Gibson Research Corporation)
@@ -30,17 +33,22 @@ try {
         $key_bin = hex2bin($sequence_key);
         $passcodes = [];
 
-        for ($i = 0; $i < 50; $i++) {
-            $counter_bin = pack('P', $i) . pack('P', 0);
-            $ciphertext = openssl_encrypt($counter_bin, 'aes-256-ecb', $key_bin, OPENSSL_RAW_DATA | OPENSSL_ZERO_PADDING);
+        for ($i = 0; $i < 125; $i++) {
+            $ciphertext = "";
+            $blocks_needed = (int)ceil(($cell_len * 6) / 128.0);
+            for ($b = 0; $b < $blocks_needed; $b++) {
+                $counter_bin = pack('P', $i) . pack('P', $b);
+                $ciphertext .= openssl_encrypt($counter_bin, 'aes-256-ecb', $key_bin, OPENSSL_RAW_DATA | OPENSSL_ZERO_PADDING);
+            }
 
             $passcode = "";
             $bit_buffer = 0;
             $bit_count = 0;
             $byte_index = 0;
+            $cipher_len = strlen($ciphertext);
 
             for ($char_idx = 0; $char_idx < $cell_len; $char_idx++) {
-                while ($bit_count < 6 && $byte_index < 16) {
+                while ($bit_count < 6 && $byte_index < $cipher_len) {
                     $bit_buffer = ($bit_buffer << 8) | ord($ciphertext[$byte_index]);
                     $byte_index++;
                     $bit_count += 8;
@@ -118,8 +126,8 @@ try {
                         if (!empty($new_seq_key)) {
                             $seq_key = strtoupper($new_seq_key);
                             $hash_password .= $seq_key;
-                            $stmt_u = $conn_u->prepare("UPDATE users SET password = ?, ppp_sequence_key = ?, ppp_row_index = ? WHERE username = ?");
-                            $stmt_u->execute([password_hash($hash_password, PASSWORD_BCRYPT), $seq_key, $ppp_row_index, $user_id]);
+                            $stmt_u = $conn_u->prepare("UPDATE users SET password = ?, ppp_sequence_key = ?, ppp_row_index = ?, ppp_password_len = ? WHERE username = ?");
+                            $stmt_u->execute([password_hash($hash_password, PASSWORD_BCRYPT), $seq_key, $ppp_row_index, strlen($new_pass), $user_id]);
                         } else {
                             $stmt_key = $conn_u->prepare("SELECT ppp_sequence_key FROM users WHERE username = ?");
                             $stmt_key->execute([$user_id]);
@@ -127,8 +135,8 @@ try {
                             if (!empty($existing_key)) {
                                 $hash_password .= $existing_key;
                             }
-                            $stmt_u = $conn_u->prepare("UPDATE users SET password = ?, ppp_row_index = ? WHERE username = ?");
-                            $stmt_u->execute([password_hash($hash_password, PASSWORD_BCRYPT), $ppp_row_index, $user_id]);
+                            $stmt_u = $conn_u->prepare("UPDATE users SET password = ?, ppp_row_index = ?, ppp_password_len = ? WHERE username = ?");
+                            $stmt_u->execute([password_hash($hash_password, PASSWORD_BCRYPT), $ppp_row_index, strlen($new_pass), $user_id]);
                         }
                         $_SESSION['settings_success_message'] = "Password and security settings updated successfully!";
                         $_SESSION['ppp_password_len'] = strlen($new_pass);
@@ -339,7 +347,8 @@ try {
                             <li style="margin-bottom: 6px;"><strong>No Secrets Stored Online:</strong> The server only stores a master Sequence Key, never the passcodes themselves.</li>
                         </ul>
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 0.8rem; color: #64748b; font-style: italic;">
-                            Tip: If your physical card is lost or compromised, change your password to automatically generate a brand new card.
+                            Tip: If your physical card is lost or compromised, change your password to automatically generate a brand new card.<br><br>
+                            <strong>Important Note:</strong> To reprint or regenerate your original passcard, you MUST keep a backup of both your 64-character Sequence Key and the corresponding Password Length Range (e.g., 30).
                         </div>
                     </div>
                 </div>
@@ -366,11 +375,32 @@ try {
                         <button type="button" onclick="copySequenceKey()" style="background: #e2e8f0; color: #475569; border: none; padding: 0 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; height: 34px;">📋</button>
                     </div>
                     <?php if ($is_forced): ?>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <button type="button" class="btn-main" onclick="triggerGenKey()" style="background:#64748b; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800;">🎲 Gen Key</button>
-                            <p style="font-size: 0.72rem; color: #64748b; line-height: 1.3; margin: 0;">
-                                A new sequence key can be assigned only when you change your password.
-                            </p>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" class="btn-main" onclick="triggerGenKey()" style="background:#64748b; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">🎲 Gen Key</button>
+                            
+                            <div class="multi-link-container" style="position: relative;">
+                                <button type="button" class="btn-main linked-text-info" style="background:#4f46e5; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">🔍 Verify & Load Key</button>
+                                
+                                <!-- Input Sequence Key Dialog -->
+                                <div class="info-dialog" id="dialog_seq_key" style="max-width: 500px; width: 90%;">
+                                    <button type="button" class="btn-close-dialog" aria-label="Close dialog">&times;</button>
+                                    <div style="padding: 10px; text-align: left; line-height: 1.6; font-family: system-ui, -apple-system, sans-serif;">
+                                        <h2 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin-top: 0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">🔑 Load Sequence Key</h2>
+                                        <p style="font-size: 0.9rem; color: #475569; margin-bottom: 12px;">
+                                            Enter an existing 64-character hexadecimal Sequence Key to generate and preview its passcard grid.<br><br>
+                                            <strong>Note:</strong> You must also match the exact <em>Password Length Range</em> that was configured when generating the key to reprint/regenerate the original passcard cells.
+                                        </p>
+                                        <div class="form-group" style="margin-bottom: 20px;">
+                                            <label style="display: block; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px;">Sequence Key</label>
+                                            <input type="text" id="manual_seq_key_input_forced" placeholder="e.g. 1DBED7E3..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 0.85rem; box-sizing: border-box;" oninput="onManualKeyInput(this.value)">
+                                            <span id="manual_key_error_forced" style="font-size: 0.75rem; color: #ef4444; margin-top: 4px; display: none;">Key must be exactly 64 hexadecimal characters.</span>
+                                        </div>
+                                        <button type="button" class="btn-main" onclick="applyManualKey(true)" style="width: 100%; padding: 12px; border-radius: 8px; background: var(--text-main); color: white; border: none; font-weight: 800; cursor: pointer;">
+                                            Load Grid
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -420,7 +450,7 @@ try {
                             $cell_len = (int)ceil($saved_pass_len / 5.0);
                             $actual_codes = !empty($seq_key) ? generate_ppp_passcodes($seq_key, $cell_len) : [];
 
-                            for ($r = 0; $r < 10; $r++) {
+                            for ($r = 0; $r < 25; $r++) {
                                 $row_num = sprintf('%02d', $r + 1);
                                 $is_saved_row = ($saved_row_index === ($r + 1));
                                 $bg = $is_saved_row ? '#e0f2fe' : (($r % 2 === 0) ? '#f8fafc' : '#ffffff');
@@ -474,9 +504,35 @@ try {
                     </div>
                     <div style="flex: 1; min-width: 150px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;">
                         <label style="display: block; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px;">Perfect Paper Passcode</label>
-                        <button type="button" class="btn-main" onclick="triggerGenKey()" style="background:#64748b; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">
-                            🎲 Gen Key
-                        </button>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" class="btn-main" onclick="triggerGenKey()" style="background:#64748b; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">
+                                🎲 Gen Key
+                            </button>
+                            
+                            <div class="multi-link-container" style="position: relative;">
+                                <button type="button" class="btn-main linked-text-info" style="background:#4f46e5; color:white; white-space:nowrap; padding: 0 16px; font-size:0.85rem; border-radius:10px; border:none; cursor:pointer; height:38px; font-weight:800; display: flex; align-items: center; gap: 6px;">🔍 Verify & Load Key</button>
+                                
+                                <!-- Input Sequence Key Dialog -->
+                                <div class="info-dialog" id="dialog_seq_key_secure" style="max-width: 500px; width: 90%;">
+                                    <button type="button" class="btn-close-dialog" aria-label="Close dialog">&times;</button>
+                                    <div style="padding: 10px; text-align: left; line-height: 1.6; font-family: system-ui, -apple-system, sans-serif;">
+                                        <h2 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin-top: 0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">🔑 Load Sequence Key</h2>
+                                        <p style="font-size: 0.9rem; color: #475569; margin-bottom: 12px;">
+                                            Enter an existing 64-character hexadecimal Sequence Key to generate and preview its passcard grid.<br><br>
+                                            <strong>Note:</strong> You must also match the exact <em>Password Length Range</em> that was configured when generating the key to reprint/regenerate the original passcard cells.
+                                        </p>
+                                        <div class="form-group" style="margin-bottom: 20px;">
+                                            <label style="display: block; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px;">Sequence Key</label>
+                                            <input type="text" id="manual_seq_key_input_secure" placeholder="e.g. 1DBED7E3..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 0.85rem; box-sizing: border-box;" oninput="onManualKeyInput(this.value)">
+                                            <span id="manual_key_error_secure" style="font-size: 0.75rem; color: #ef4444; margin-top: 4px; display: none;">Key must be exactly 64 hexadecimal characters.</span>
+                                        </div>
+                                        <button type="button" class="btn-main" onclick="applyManualKey(false)" style="width: 100%; padding: 12px; border-radius: 8px; background: var(--text-main); color: white; border: none; font-weight: 800; cursor: pointer;">
+                                            Load Grid
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -506,6 +562,85 @@ try {
     let activeSeqKey = "<?= htmlspecialchars($seq_key) ?>";
     let pendingSeqKey = "";
     let selectedRowIdx = <?= $saved_row_index ?>;
+
+    function onManualKeyInput(val) {
+        const isValid = /^[a-fA-F0-9]{64}$/.test(val.trim());
+        const errForced = document.getElementById('manual_key_error_forced');
+        const errSecure = document.getElementById('manual_key_error_secure');
+        
+        if (errForced) {
+            errForced.style.display = (val.trim() === '' || isValid) ? 'none' : 'block';
+        }
+        if (errSecure) {
+            errSecure.style.display = (val.trim() === '' || isValid) ? 'none' : 'block';
+        }
+    }
+
+    function applyManualKey(isForced) {
+        const inputId = isForced ? 'manual_seq_key_input_forced' : 'manual_seq_key_input_secure';
+        const inputEl = document.getElementById(inputId);
+        if (!inputEl) return;
+        
+        const rawVal = inputEl.value.trim();
+        if (!/^[a-fA-F0-9]{64}$/.test(rawVal)) {
+            alert("Please enter a valid 64-character hexadecimal Sequence Key first.");
+            return;
+        }
+        
+        pendingSeqKey = rawVal.toUpperCase();
+        
+        // Update display key text field and hidden inputs
+        const displayKeyInput = document.getElementById('ppp_display_key');
+        if (displayKeyInput) {
+            displayKeyInput.value = pendingSeqKey;
+        }
+        document.getElementById('ppp_sequence_key_input').value = pendingSeqKey;
+        
+        // Reset selected row
+        selectedRowIdx = 0;
+        document.getElementById('ppp_row_index_input').value = '0';
+        
+        // Show QR and grid preview if they are hidden
+        const qrWrapper = document.getElementById('qr-container-wrapper');
+        if (qrWrapper) qrWrapper.style.display = 'flex';
+        const gridSection = document.getElementById('ppp-grid-section');
+        if (gridSection) gridSection.style.display = 'block';
+        
+        // Update QR images
+        const encodedKey = encodeURIComponent(pendingSeqKey);
+        const qrImg = document.getElementById('ppp_qr_img');
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodedKey}`;
+        }
+        const qrLargeImg = document.getElementById('ppp_qr_large_img');
+        if (qrLargeImg) {
+            qrLargeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedKey}`;
+        }
+        
+        // Uncheck show-active checkbox
+        const showActiveCheckbox = document.getElementById('ppp_show_active_checkbox');
+        if (showActiveCheckbox) {
+            showActiveCheckbox.checked = false;
+        }
+        const showActiveContainer = document.getElementById('ppp_show_active_container');
+        if (showActiveContainer) {
+            showActiveContainer.style.display = 'flex';
+        }
+        
+        // Fetch new grid preview
+        fetchGridPreview(pendingSeqKey);
+        
+        // Close modal
+        if (window.dialogEngine) {
+            window.dialogEngine.closeAnyOpenDialogs();
+        }
+        
+        // Scroll to PPP grid
+        const pppCard = document.getElementById('ppp-card');
+        if (pppCard) {
+            pppCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
 
     function generateRandomHexKey() {
         const chars = '0123456789ABCDEF';
@@ -579,7 +714,7 @@ try {
         const showActive = checkbox && checkbox.checked;
         const currentSelectedIdx = showActive ? <?= $saved_row_index ?> : selectedRowIdx;
 
-        for (let r = 0; r < 10; r++) {
+        for (let r = 0; r < 25; r++) {
             const rowNum = r + 1;
             const isSelected = (currentSelectedIdx === rowNum);
             const rowLabel = String(rowNum).padStart(2, '0');
@@ -639,7 +774,7 @@ try {
         if (!source) return;
 
         let tableRowsHtml = '';
-        for (let r = 0; r < 10; r++) {
+        for (let r = 0; r < 25; r++) {
             const rowLabel = String(r + 1).padStart(2, '0');
             let cellsHtml = '';
             for (let c = 0; c < 5; c++) {

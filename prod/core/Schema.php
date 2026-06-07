@@ -90,7 +90,8 @@ class Schema {
                 role TEXT,
                 display_name TEXT DEFAULT '',
                 ppp_sequence_key TEXT DEFAULT '',
-                ppp_row_index INTEGER DEFAULT 0
+                ppp_row_index INTEGER DEFAULT 0,
+                ppp_password_len INTEGER DEFAULT 55
             )",
             'audit_log' => "CREATE TABLE IF NOT EXISTS audit_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,6 +283,9 @@ class Schema {
             }
             if (!in_array('ppp_row_index', $col_names)) {
                 $conn->exec("ALTER TABLE users ADD COLUMN ppp_row_index INTEGER DEFAULT 0");
+            }
+            if (!in_array('ppp_password_len', $col_names)) {
+                $conn->exec("ALTER TABLE users ADD COLUMN ppp_password_len INTEGER DEFAULT 55");
             }
         }
 

@@ -61,8 +61,8 @@ class Security {
      */
     public static function validatePassword($password, &$error_msg = '') {
         $len = strlen($password);
-        if ($len < 25 || $len > 80) {
-            $error_msg = "Password length must be between 25 and 80 characters.";
+        if ($len < 25 || $len > 125) {
+            $error_msg = "Password length must be between 25 and 125 characters.";
             return false;
         }
         if (preg_match('/^[!#%+23456789:=?@ABCDEFGHJKLMNPRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/', $password)) {

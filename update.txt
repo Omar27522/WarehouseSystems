@@ -1,0 +1,14 @@
+PPP System.
+
+I need to unpair the how the PPP (password) is stored on the data base.
+and make it more secure. we can update the entyre system entirely.
+
+by loading a unique 25 row Passcard grid with each Sequence Key.
+A user can provide a valid Sequence Key number and generate a card on the fly.
+
+The only problem I see is that the Sequence Key will have to know how long is the pass card based on the user decision while using the Password Length Range
+
+
+I kinda wanted to make the passworrd lenght limit larger and the font inside teh card smaller. so that more passcodes can be displayed and printed on standard print paper standard public US sizes.
+
+

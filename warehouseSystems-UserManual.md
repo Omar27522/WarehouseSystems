@@ -7,7 +7,7 @@ Welcome to the **IQA Warehouse Systems** user manual. This guide provides compre
 ## 📖 Table of Contents
 1. [Introduction](#1-introduction)
 2. [Getting Started](#2-getting-started)
-3. [Warehouse Control Center](#3-warehouse-control-center)
+3. [Warehouse Control Center](#warehouse-control-center)
 4. [CRM & Relationship Hub](#4-crm--relationship-hub)
 5. [Order Builder & Checkout](#5-order-builder--checkout)
 6. [Scheduling & Analytics](#6-scheduling--analytics)
@@ -32,13 +32,16 @@ Welcome to the **IQA Warehouse Systems** user manual. This guide provides compre
 2. Log in using your assigned credentials.
 3. **Note**: Non-admin users are restricted to the Warehouse Portal, while admins have full access to all modules.
 
+### Paper Password User System
+PPP a less secure Version of PPP by GRC is implemented, so that way users are able able to remember a mumber row on a list rather than the actual password.
+
 ### The Dashboard
 Upon logging in, you will see the main dashboard (`index.php`). The sidebar or navigation menu allows you to switch between the Core Modules: **Warehouse**, **Leads**, **Orders**, **Calendar**, **Trends**, and **Settings**.
 
 ---
 
-## 3. Warehouse Control Center
-The Warehouse module (`/prod/pages/warehouse.php`) is where you manage physical stock and storage zones.
+## Warehouse Control Center
+The Warehouse module (`/prod/pages/warehouse.php`) is where you manage physical stock and storage zones. And is where most the Users will live.
 
 ### Stock Intake
 1. **Select Sector**: Choose the appropriate category (e.g., Laptops) to see relevant fields like CPU, RAM, and Battery status.
