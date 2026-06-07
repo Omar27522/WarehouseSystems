@@ -1,0 +1,413 @@
+/**
+ * System — Batch Builder Logic
+ * Merged & Modernized into a single external module.
+ */
+
+/* ============================================================
+   1. Data Definitions
+   ============================================================ */
+
+/* ============================================================
+   2. Main Initialization
+   ============================================================ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    initFormDatalists();
+    initSummarySearch();
+});
+
+function initFormDatalists() {
+    const brandSelect = document.getElementById('brand');
+    const modelDatalist = document.getElementById('model-options');
+    const seriesDatalist = document.getElementById('series-options');
+    const cpuDatalist = document.getElementById('cpu-options');
+    const modelInput = document.getElementById('models');
+    const seriesInput = document.getElementById('series');
+
+    const cpuGenInput = document.getElementById('cpu_gen');
+
+    // Populate CPU list once
+    if (cpuDatalist) {
+        cpuDatalist.innerHTML = cpuGenerations.map(cpu => `<option value="${cpu}">`).join('');
+    }
+
+    const updateSeriesOptions = () => {
+        const selectedBrand = brandSelect ? brandSelect.value : '';
+        const selectedModel = modelInput ? modelInput.value.trim() : '';
+        const data = IQA_Inventory[selectedBrand];
+
+        if (seriesDatalist) seriesDatalist.innerHTML = '';
+
+        if (data) {
+            let seriesList = [];
+            if (selectedModel && data.modelSeries && data.modelSeries[selectedModel]) {
+                seriesList = data.modelSeries[selectedModel];
+            } else {
+                seriesList = data.series || [];
+            }
+
+            const val = seriesInput ? seriesInput.value.trim().toLowerCase() : '';
+            let filtered = seriesList;
+            if (val.length >= 1) {
+                filtered = seriesList.filter(s => s.toLowerCase().startsWith(val));
+            }
+            if (seriesDatalist) {
+                seriesDatalist.innerHTML = filtered.map(s => `<option value="${s}">`).join('');
+            }
+        }
+    };
+
+    if (brandSelect) {
+        brandSelect.addEventListener('change', (e) => {
+            const selectedBrand = e.target.value;
+            const data = IQA_Inventory[selectedBrand];
+            const brandLower = selectedBrand.trim().toLowerCase();
+            const keepDash = (brandLower === 'apple' || brandLower === 'other');
+
+            if (modelInput) modelInput.value = '';
+            
+            if (seriesInput) {
+                if (keepDash) {
+                    seriesInput.value = '-';
+                } else if (seriesInput.value === '-') {
+                    seriesInput.value = '';
+                }
+            }
+            
+            if (cpuGenInput) {
+                if (keepDash) {
+                    cpuGenInput.value = '-';
+                } else if (cpuGenInput.value === '-') {
+                    cpuGenInput.value = '';
+                }
+            }
+
+            if (modelDatalist) modelDatalist.innerHTML = '';
+            if (seriesDatalist) seriesDatalist.innerHTML = '';
+
+            if (data) {
+                if (modelDatalist) modelDatalist.innerHTML = data.models.map(m => `<option value="${m}">`).join('');
+                updateSeriesOptions();
+            }
+        });
+    }
+
+    if (modelInput) {
+        modelInput.addEventListener('input', updateSeriesOptions);
+        modelInput.addEventListener('change', updateSeriesOptions);
+    }
+
+    if (seriesInput) {
+        seriesInput.addEventListener('input', updateSeriesOptions);
+        seriesInput.addEventListener('focus', updateSeriesOptions);
+    }
+}
+
+function initSummarySearch() {
+    const searchInput = document.getElementById('summary-search');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', filterSummary);
+    }
+}
+
+/**
+ * Simple Tag Writer: Appends clicked keyword to description field.
+ */
+function toggleDescriptionKeyword(keyword) {
+    const descArea = document.getElementById('description');
+    if (!descArea) return;
+
+    let val = descArea.value.trim();
+    if (val) {
+        if (val.endsWith(',')) {
+            descArea.value = val + ' ' + keyword;
+        } else {
+            descArea.value = val + ', ' + keyword;
+        }
+    } else {
+        descArea.value = keyword;
+    }
+    descArea.focus();
+    descArea.dispatchEvent(new Event('input'));
+}
+
+window.toggleDescriptionKeyword = toggleDescriptionKeyword;
+
+/* ============================================================
+   3. Summary & Item Actions
+   ============================================================ */
+
+/**
+ * Copies item description to clipboard
+ * @param {HTMLElement} btn
+ */
+function copyEntry(btn) {
+    const container = btn.closest('.col-desc');
+    const textNode = container ? container.querySelector('.copyable-text') : null;
+    if (!textNode) return;
+
+    const text = textNode.innerText.trim();
+
+    const performCopy = (textToCopy) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(textToCopy);
+        } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            Object.assign(textArea.style, { position: "fixed", left: "-9999px", top: "0" });
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { document.execCommand('copy'); } catch (err) {}
+            document.body.removeChild(textArea);
+            return Promise.resolve();
+        }
+    };
+
+    performCopy(text).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅';
+        btn.style.opacity = '1';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.opacity = '0.3';
+        }, 1500);
+    });
+}
+
+/**
+ * Toggles inline editing for quantity and price
+ * @param {HTMLElement} btn
+ */
+function toggleInlineEdit(btn) {
+    const row = btn.closest('tr');
+    if (!row) return;
+
+    const staticViews = row.querySelectorAll('.static-view');
+    const editViews = row.querySelectorAll('.edit-view');
+
+    if (staticViews.length > 0 && editViews.length > 0) {
+        const isEditing = staticViews[0].style.display === 'none';
+
+        staticViews.forEach(v => v.style.display = isEditing ? 'flex' : 'none');
+        editViews.forEach(v => v.style.display = isEditing ? 'none' : 'block');
+
+        btn.style.opacity = isEditing ? '0.3' : '1';
+        btn.innerHTML = isEditing ? '✏️' : '❌'; // Toggle icon to close/cancel
+    }
+}
+
+/**
+ * Filters the current order summary table
+ */
+function filterSummary() {
+    const queryEl = document.getElementById('summary-search');
+    const query = queryEl ? queryEl.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('.summary-row');
+    rows.forEach(row => {
+        const text = row.getAttribute('data-search') || '';
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+/* ============================================================
+   4. Warehouse Integration
+   ============================================================ */
+
+function openWarehouseModal() {
+    const modal = document.getElementById('wh-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const searchInput = document.getElementById('wh-modal-search');
+        if (searchInput) searchInput.focus();
+    }
+}
+
+function closeWarehouseModal() {
+    const modal = document.getElementById('wh-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function searchWarehouseItems() {
+    const qInput = document.getElementById('wh-modal-search');
+    const sSelect = document.getElementById('wh-modal-sector');
+    const resultsDiv = document.getElementById('wh-results');
+
+    if (!qInput || !sSelect || !resultsDiv) return;
+
+    const q = qInput.value;
+    const sector = sSelect.value;
+
+    if (q.length < 2 && q.length > 0) return;
+
+    try {
+        const response = await fetch(`api/get_warehouse_stock.php?q=${encodeURIComponent(q)}&sector=${encodeURIComponent(sector)}`);
+        const items = await response.json();
+
+        resultsDiv.innerHTML = '';
+        if (!items || items.length === 0) {
+            resultsDiv.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:#94a3b8;">No matching stock found.</div>';
+            return;
+        }
+
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'wh-result-card'; // Added class for easier styling if needed
+            Object.assign(card.style, {
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderOrigin: 'padding-box',
+                borderRadius: '16px',
+                padding: '15px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+            });
+
+            card.onmouseover = () => card.style.background = '#f1f5f9';
+            card.onmouseout = () => card.style.background = '#f8fafc';
+            card.onclick = () => selectWarehouseItem(item);
+
+            const specsStr = Object.entries(item.specs || {}).map(([k,v]) => `${k.toUpperCase()}: ${v}`).join(' | ');
+
+            card.innerHTML = `
+                <div style="font-size:0.65rem; color:#64748b; font-weight:800; text-transform:uppercase;">LOC: ${item.location_code}</div>
+                <div style="font-weight:800; font-size:1.1rem; color:#0f172a; margin:4px 0;">${item.brand} ${item.model}</div>
+                <div style="font-size:0.75rem; color:#475569;">${specsStr}</div>
+                <div style="margin-top:10px; font-weight:700; color:var(--accent-color);">In Stock: ${item.quantity}</div>
+            `;
+            resultsDiv.appendChild(card);
+        });
+    } catch (e) {
+        resultsDiv.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:#ef4444;">Error searching stock.</div>';
+    }
+}
+
+/**
+ * Maps warehouse item data back to the order form
+ * @param {Object} item
+ */
+function selectWarehouseItem(item) {
+    const brandEl = document.getElementById('brand');
+    const modelsEl = document.getElementById('models');
+    const seriesEl = document.getElementById('series');
+    const cpuEl = document.getElementById('cpu');
+    const descEl = document.getElementById('description');
+
+    if (brandEl) {
+        // Modernized Selection: Find matching option case-insensitively from brand-options datalist
+        const brandOptionsEl = document.getElementById('brand-options');
+        const options = brandOptionsEl ? Array.from(brandOptionsEl.options) : [];
+        const match = options.find(opt => opt.value.toLowerCase() === (item.brand || "").toLowerCase());
+
+        if (match) {
+            brandEl.value = match.value;
+        } else {
+            // Check for partial matches (e.g., "Microsoft Gaming" -> "Microsoft", "HP Laptop" -> "HP")
+            const partialMatch = options.find(opt => opt.value.length >= 2 && (item.brand || "").toLowerCase().includes(opt.value.toLowerCase()));
+            brandEl.value = partialMatch ? partialMatch.value : (item.brand || "Other");
+        }
+
+        // IMPORTANT: Manually trigger the change event to populate datalists (models/series options)
+        brandEl.dispatchEvent(new Event('change'));
+    }
+
+    if (modelsEl) modelsEl.value = item.model || "";
+
+    const specs = item.specs || {};
+    if (seriesEl && specs.series) seriesEl.value = specs.series;
+
+    if (cpuEl) {
+        let cpuVal = "";
+        if (specs.cpu) {
+            cpuVal = specs.cpu + (specs.gen ? " " + specs.gen : "");
+        } else if (specs.gpu) {
+            cpuVal = specs.gpu;
+        } else if (specs.cpu_gen) {
+            cpuVal = specs.cpu_gen;
+        }
+        cpuEl.value = cpuVal;
+    }
+
+    if (descEl) {
+        if (specs.type) {
+            descEl.value = specs.type;
+        } else {
+            // Build a descriptive spec string for Gaming/Desktops
+            const parts = [];
+            if (specs.ram) parts.push(specs.ram + " RAM");
+            if (specs.storage) parts.push(specs.storage);
+            if (specs.psu) parts.push(specs.psu);
+            if (specs.refresh_rate) parts.push(specs.refresh_rate);
+
+            descEl.value = parts.join(" | ") || (item.sector + " Unit");
+        }
+    }
+
+    closeWarehouseModal();
+
+    // Highlight effect
+    ['brand', 'models', 'series', 'cpu', 'description'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.borderColor = 'var(--accent-color)';
+            el.style.boxShadow = '0 0 0 4px rgba(140, 198, 63, 0.2)';
+            setTimeout(() => {
+                el.style.borderColor = '';
+                el.style.boxShadow = '';
+            }, 2000);
+        }
+    });
+}
+
+/**
+ * Repeats the last successful entry by populating the form from injected JSON state.
+ */
+function repeatLastItem() {
+    const stateEl = document.getElementById('lastItemState');
+    if (!stateEl) return;
+
+    try {
+        const data = JSON.parse(stateEl.textContent);
+
+        const fields = {
+            'brand': data.brand,
+            'models': data.models,
+            'series': data.series,
+            'cpu': data.cpu,
+            'description': data.description,
+            'qty': data.qty,
+            'price': data.price
+        };
+
+        const brandEl = document.getElementById('brand');
+        if (brandEl && fields.brand) {
+            brandEl.value = fields.brand;
+            // Trigger change to populate datalists
+            brandEl.dispatchEvent(new Event('change'));
+        }
+
+        // Populate other fields
+        Object.entries(fields).forEach(([id, value]) => {
+            if (id === 'brand') return; // Already handled
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        });
+
+        // Add highlight effect
+        Object.keys(fields).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.borderColor = 'var(--accent-color)';
+                el.style.boxShadow = '0 0 0 4px rgba(140, 198, 63, 0.2)';
+                setTimeout(() => {
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
+                }, 1500);
+            }
+        });
+
+    } catch (e) {
+        console.error("Error repeating last item:", e);
+    }
+}
+
