@@ -17,18 +17,26 @@ $routes = [
     'calendar'          => ['page' =>'pages/calendar.php',         'css' => 'calendar.css'],
     'default'           => ['page' =>'pages/customer_registry.php','css' => 'customer_registry.css'],
     'new_order'         => ['page' =>'pages/new_order.php',        'css' => 'new_order.css'],
-    'trends'            => ['page' =>'pages/trends.php',           'css' => 'trends.css']
+    'trends'            => ['page' =>'pages/trends.php',           'css' => 'trends.css'],
+    'import_sales'      => ['page' =>'pages/import_sales.php',      'css' => 'orders.css']
 ];
 
 $active_key = $is_new_order ? 'new_order' : (isset($routes[$view]) ? $view : 'default');
 
 // --- ROLE BASED ACCESS CONTROL ---
 $user_role = $_SESSION['role'] ?? 'Operator';
-if ($user_role !== 'Admin') {
+if ($user_role === 'Operator') {
     $allowed_operator_keys = ['warehouse', 'import_warehouse', 'settings'];
     if (!in_array($active_key, $allowed_operator_keys)) {
         $active_key = 'warehouse';
     }
+} elseif ($user_role === 'Front Desk') {
+    $allowed_front_desk_keys = ['trends', 'calendar', 'settings'];
+    if (!in_array($active_key, $allowed_front_desk_keys)) {
+        $active_key = 'calendar';
+    }
+} elseif ($user_role !== 'Admin') {
+    $active_key = 'warehouse';
 }
 
 $active_route = $routes[$active_key];
@@ -129,6 +137,22 @@ $page_content = ob_get_clean();
                     <span class="step-num">⚙️</span> Settings
                 </a>
                 <?php endif; ?>
+            <?php elseif ($user_role === 'Front Desk'): ?>
+                <a href="index.php?view=calendar" class="crumb <?= !isset($_GET['view']) || $_GET['view'] === 'calendar' ? 'active' : '' ?>">
+                    <span class="step-num">📅</span> Calendar Portal
+                </a>
+                <?php if (isset($_GET['view']) && $_GET['view'] === 'trends'): ?>
+                <span class="separator">/</span>
+                <a href="index.php?view=trends" class="crumb active">
+                    <span class="step-num">📈</span> Trends Analysis
+                </a>
+                <?php endif; ?>
+                <?php if (isset($_GET['view']) && $_GET['view'] === 'settings'): ?>
+                <span class="separator">/</span>
+                <a href="#" class="crumb active">
+                    <span class="step-num">⚙️</span> Personal Settings
+                </a>
+                <?php endif; ?>
             <?php else: ?>
                 <a href="index.php?view=warehouse" class="crumb <?= !isset($_GET['view']) || $_GET['view'] === 'warehouse' ? 'active' : '' ?>">
                     <span class="step-num">🏬</span> Warehouse Portal
@@ -148,23 +172,31 @@ $page_content = ob_get_clean();
                 ☰
             </button>
             <div id="nav-dropdown-menu" class="nav-dropdown" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); box-shadow: var(--shadow-lg); width: 220px; padding: 8px; flex-direction: column; gap: 4px; animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
-                <?php if ($user_role === 'Admin'): ?>
+                <?php if ($user_role === 'Admin' || $user_role === 'Front Desk'): ?>
                     <a href="index.php?view=calendar" class="dropdown-item <?= isset($_GET['view']) && $_GET['view'] === 'calendar' ? 'active' : '' ?>">
                         <span>📅</span> Calendar
                     </a>
+                <?php endif; ?>
+
+                <?php if ($user_role === 'Admin'): ?>
                     <a href="index.php?view=leads" class="dropdown-item <?= isset($_GET['view']) && $_GET['view'] === 'leads' ? 'active' : '' ?>">
                         <span>🎯</span> Leads
                     </a>
                 <?php endif; ?>
 
-                <a href="index.php?view=warehouse" class="dropdown-item <?= isset($_GET['view']) && $_GET['view'] === 'warehouse' ? 'active' : '' ?>">
-                    <span>🏬</span> Warehouse
-                </a>
+                <?php if ($user_role === 'Admin' || $user_role === 'Operator'): ?>
+                    <a href="index.php?view=warehouse" class="dropdown-item <?= isset($_GET['view']) && $_GET['view'] === 'warehouse' ? 'active' : '' ?>">
+                        <span>🏬</span> Warehouse
+                    </a>
+                <?php endif; ?>
 
                 <?php if ($user_role === 'Admin'): ?>
                     <a href="index.php?view=orders" class="dropdown-item <?= isset($_GET['view']) && $_GET['view'] === 'orders' ? 'active' : '' ?>">
                         <span>📦</span> All Orders
                     </a>
+                <?php endif; ?>
+
+                <?php if ($user_role === 'Admin' || $user_role === 'Front Desk'): ?>
                     <a href="index.php?view=trends" class="dropdown-item <?= isset($_GET['view']) && $_GET['view'] === 'trends' ? 'active' : '' ?>">
                         <span>📈</span> Trends Analysis
                     </a>

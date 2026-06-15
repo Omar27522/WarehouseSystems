@@ -17,7 +17,13 @@ if (!isset($_COOKIE['device_id'])) {
 
 // 1. Auto-Redirect if already logged in
 if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    $redirect = ($_SESSION['role'] === 'Admin') ? "../index.php" : "../index.php?view=warehouse";
+    if ($_SESSION['role'] === 'Admin') {
+        $redirect = "../index.php";
+    } elseif ($_SESSION['role'] === 'Front Desk') {
+        $redirect = "../index.php?view=calendar";
+    } else {
+        $redirect = "../index.php?view=warehouse";
+    }
     header("Location: $redirect");
     exit();
 }
@@ -275,6 +281,8 @@ try {
                         header("Location: ../index.php?view=settings");
                     } elseif ($_SESSION['role'] === 'Admin') {
                         header("Location: ../index.php");
+                    } elseif ($_SESSION['role'] === 'Front Desk') {
+                        header("Location: ../index.php?view=calendar");
                     } else {
                         header("Location: ../index.php?view=warehouse");
                     }
