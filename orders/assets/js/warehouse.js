@@ -96,6 +96,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     initWarehouseSpreadsheetEvents();
+
+    // Intercept delete forms to prevent full-page reload and scrolling
+    document.addEventListener('submit', async (e) => {
+        const form = e.target;
+        const actionInput = form.querySelector('input[name="action"]');
+        if (actionInput && actionInput.value === 'delete_inventory') {
+            if (e.defaultPrevented) {
+                return;
+            }
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    const row = form.closest('tr');
+                    if (row) {
+                        row.style.transition = 'all 0.3s ease';
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(20px)';
+                        setTimeout(() => {
+                            row.remove();
+                            // Force sync to update sums/totals if AppSync exists
+                            if (window.AppSync && typeof window.AppSync.sync === 'function') {
+                                window.AppSync.sync('inventory-list');
+                            }
+                        }, 300);
+                    }
+                } else {
+                    alert("Failed to delete the item. Please try again.");
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error("Error deleting item:", error);
+                alert("An error occurred. Please try again.");
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        }
+    });
 });
 
 /**
@@ -395,7 +440,7 @@ function filterWarehouse() {
         if (isMatch) {
             cards[i].style.display = "";
             visibleCount++;
-            
+
             let qty = 0;
             const qtyPill = cards[i].querySelector('.qty-pill');
             if (qtyPill) {
@@ -1153,7 +1198,7 @@ function updateSelectColors() {
 function initWarehouseSpreadsheetEvents() {
     const listContainer = document.getElementById('inventory-list');
     if (!listContainer) return;
-    
+
     // Check if we are in spreadsheet mode (metadata block is present)
     const metadata = document.getElementById('warehouse-metadata');
     if (!metadata) return;
@@ -1204,7 +1249,7 @@ function initWarehouseSpreadsheetEvents() {
                 const model = sourceRow.querySelector('[data-field="model"] .cell-input')?.value || '';
                 const qty = sourceRow.querySelector('[data-field="quantity"] .cell-input')?.value || '1';
                 const price = sourceRow.querySelector('[data-field="price"] .cell-input')?.value || '0';
-                
+
                 const condition = sourceRow.querySelector('[data-field="condition"] .cell-input')?.value || 'Used';
                 const notes = sourceRow.querySelector('[data-field="notes"] .cell-input')?.value || '';
 
@@ -1326,7 +1371,7 @@ async function handleWarehouseCellSave(input) {
             setTimeout(() => {
                 cell.style.backgroundColor = '';
             }, 600);
-            
+
             // Re-apply search filter to reflect edited value immediately
             filterWarehouse();
         } else {
@@ -1406,5 +1451,80 @@ async function createWarehouseRowFromBlank(row) {
         if (btnIndicator) btnIndicator.textContent = '➕';
     }
 }
+
+/**
+ * Consolidates duplicate rows with identical fields (excluding notes) in the current sector and location.
+ */
+async function consolidateWarehouseRows() {
+    const metadata = document.getElementById('warehouse-metadata');
+    if (!metadata) {
+        alert("Spreadsheet metadata not found.");
+        return;
+    }
+
+    const sector = metadata.getAttribute('data-sector');
+    const locationCode = metadata.getAttribute('data-location-code');
+    const csrfToken = metadata.getAttribute('data-csrf');
+
+    if (!confirm("Are you sure you want to consolidate rows with identical values in this zone/shelf? Duplicate items will be merged and their quantities added together. Items with notes will not be merged.")) {
+        return;
+    }
+
+    const btn = document.getElementById('btn-consolidate-spreadsheet');
+    let originalHtml = "";
+    if (btn) {
+        originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = "⏳ Merging...";
+    }
+
+    try {
+        const response = await fetch('api/consolidate_inventory.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                csrf_token: csrfToken,
+                sector: sector,
+                location_code: locationCode
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            if (window.IQA_Notify) {
+                window.IQA_Notify.success(result.message || 'Rows consolidated successfully ✨');
+            } else {
+                alert(result.message || 'Rows consolidated successfully');
+            }
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            if (window.IQA_Notify) {
+                window.IQA_Notify.error('Failed to consolidate: ' + (result.error || 'Unknown error'));
+            } else {
+                alert('Failed to consolidate: ' + (result.error || 'Unknown error'));
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    } catch (err) {
+        console.error('Error consolidating rows:', err);
+        if (window.IQA_Notify) {
+            window.IQA_Notify.error('An error occurred while consolidating rows.');
+        } else {
+            alert('An error occurred while consolidating rows.');
+        }
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
 
 
