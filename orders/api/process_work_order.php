@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'extract') {
     }
 
     $promptSettings = $config['prompt_settings'] ?? [];
-    
+
     // Build prompt dynamically from settings
     $defaultPromptSettings = [
         'role' => "You are a B2B sales order coordinator. Analyze this handwritten B2B Work Order image/document and extract all table rows.",
@@ -152,11 +152,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'extract') {
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestData));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
-        curl_close($ch);
 
         if ($response === false || $httpCode !== 200) {
             throw new \Exception("Gemini API call failed (HTTP $httpCode): " . ($curlError ?: $response));

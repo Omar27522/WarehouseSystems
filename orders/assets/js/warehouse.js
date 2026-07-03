@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (submitBtn) submitBtn.disabled = true;
 
             try {
-                const response = await fetch(form.action || window.location.href, {
+                const response = await fetch(form.getAttribute('action') || window.location.href, {
                     method: 'POST',
                     body: formData
                 });
