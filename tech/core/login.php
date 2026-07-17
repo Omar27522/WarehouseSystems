@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/database.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -15,17 +14,17 @@ if (!isset($_COOKIE['device_id'])) {
     $device_id = $_COOKIE['device_id'];
 }
 
-// 1. Auto-Redirect if already logged in
+// 1. Auto-Redirect if already logged in and has access
 if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    if ($_SESSION['role'] === 'Admin') {
-        $redirect = "../index.php";
-    } elseif ($_SESSION['role'] === 'Front Desk') {
-        $redirect = "../index.php?view=calendar";
-    } else {
-        $redirect = "../index.php?view=warehouse";
+    if (isset($_SESSION['force_password_change']) && $_SESSION['force_password_change'] === true) {
+        header("Location: ../pages/settings.php");
+        exit();
     }
-    header("Location: $redirect");
-    exit();
+    $role = $_SESSION['role'] ?? '';
+    if ($role === 'Admin' || strpos($role, 'Technician') !== false) {
+        header("Location: ../index.php");
+        exit();
+    }
 }
 
 // AJAX handler for generating PPP passcodes
@@ -86,7 +85,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'ajax_generate_ppp') {
 $error = null;
 
 try {
-    $conn_auth = Database::users();
+    $conn_auth = Database::getConnection('users');
 
     // Consolidated Initial Schema (Role included)
     $conn_auth->exec("CREATE TABLE IF NOT EXISTS users (
@@ -128,14 +127,6 @@ try {
     }
     if (!in_array('ppp_password_len', $col_names)) {
         $conn_auth->exec("ALTER TABLE users ADD COLUMN ppp_password_len INTEGER DEFAULT 55");
-    }
-
-    // Seed default user if empty (admin / 123)
-    $stmt = $conn_auth->query("SELECT COUNT(*) FROM users");
-    if ($stmt->fetchColumn() == 0) {
-        $hash = password_hash('123', PASSWORD_BCRYPT);
-        $stmt_s = $conn_auth->prepare("INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)");
-        $stmt_s->execute(['admin', $hash, 'Administrator', 'Admin']);
     }
 
     // Helper function for Fibonacci sequence
@@ -231,7 +222,7 @@ try {
 
         if ($attempts >= 77) {
             $_SESSION['honeypot'] = true;
-            header("Location: ../index.php?view=settings");
+            header("Location: ../pages/settings.php");
             exit();
         }
 
@@ -272,24 +263,25 @@ try {
                     $_SESSION['role'] = $user['role'] ?? 'Operator';
                     $_SESSION['ppp_password_len'] = strlen($password);
 
-                    $is_ppp_user = !empty($user['ppp_sequence_key']);
-                    $min_len = $is_ppp_user ? 25 : 12;
+                    // Check Tech access
+                    if ($_SESSION['role'] === 'Admin' || strpos($_SESSION['role'], 'Technician') !== false) {
+                        $is_ppp_user = !empty($user['ppp_sequence_key']);
+                        $min_len = $is_ppp_user ? 25 : 12;
 
-                    if (($user['username'] === 'admin' && password_verify('123', $user['password'])) || strlen($password) < $min_len) {
-                        $_SESSION['force_password_change'] = true;
-                    }
+                        if (($user['username'] === 'admin' && password_verify('123', $user['password'])) || strlen($password) < $min_len) {
+                            $_SESSION['force_password_change'] = true;
+                        }
 
-                    // Redirect based on role
-                    if (isset($_SESSION['force_password_change']) && $_SESSION['force_password_change'] === true) {
-                        header("Location: ../index.php?view=settings");
-                    } elseif ($_SESSION['role'] === 'Admin') {
-                        header("Location: ../index.php");
-                    } elseif ($_SESSION['role'] === 'Front Desk') {
-                        header("Location: ../index.php?view=calendar");
+                        if (isset($_SESSION['force_password_change']) && $_SESSION['force_password_change'] === true) {
+                            header("Location: ../pages/settings.php");
+                        } else {
+                            header("Location: ../index.php");
+                        }
+                        exit();
                     } else {
-                        header("Location: ../index.php?view=warehouse");
+                        $error = "Access Denied: You do not have Technician privileges.";
+                        session_destroy();
                     }
-                    exit();
                 } else {
                     $error = "Invalid username or password";
                     $log_attempt = true;
@@ -348,7 +340,7 @@ try {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Settings | System Portal</title>
-            <link rel="stylesheet" href="../assets/styles/style.css?v=1">
+            <link rel="stylesheet" href="../../orders/assets/styles/style.css?v=1">
             <style>
                 body {
                     background: #0f172a;
@@ -451,7 +443,7 @@ try {
             </div>
             <script>
                 try {
-                    history.pushState(null, '', '../index.php?view=settings');
+                    history.pushState(null, '', '../pages/settings.php');
                 } catch(e) {}
             </script>
         </body>
@@ -463,18 +455,17 @@ try {
     $error = "System Error: " . $e->getMessage();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | System Portal</title>
-    <link rel="stylesheet" href="../assets/styles/style.css?v=<?= filemtime('../assets/styles/style.css') ?>">
-    <link rel="stylesheet" href="../assets/styles/login.css?v=<?= filemtime('../assets/styles/login.css') ?>">
-    <link rel="stylesheet" href="../assets/styles/dialogs.css?v=<?= filemtime('../assets/styles/dialogs.css') ?>">
-    <link rel="icon" type="image/png" href="../assets/icon/smart-home-sensor-wifi-black-outline-25276_1024.png">
-    <script src="../assets/js/dialogEngine.js?v=<?= filemtime('../assets/js/dialogEngine.js') ?>"></script>
+    <title>Technician Login | System</title>
+    <link rel="stylesheet" href="../../orders/assets/styles/style.css">
+    <link rel="stylesheet" href="../../orders/assets/styles/login.css">
+    <link rel="stylesheet" href="../../orders/assets/styles/dialogs.css">
+    <link rel="icon" type="image/png" href="../../orders/assets/icon/smart-home-sensor-wifi-black-outline-25276_1024.png">
+    <script src="../../orders/assets/js/dialogEngine.js"></script>
     <script src="https://unpkg.com/html5-qrcode" defer></script>
 </head>
 <body class="login-body">
@@ -482,13 +473,13 @@ try {
     <div class="login-card">
         <div class="login-logo">
             <a href="../../index.php">
-                <img src="../assets/icon/smart-home-sensor-wifi-black-outline-25276_1024.png" alt="IQA Logo">
+                <img src="../../orders/assets/icon/smart-home-sensor-wifi-black-outline-25276_1024.png" alt="Logo">
             </a>
         </div>
 
         <div class="login-header">
-            <h1>System Portal</h1>
-            <p>Enter your credentials to access order management.</p>
+            <h1>Technician Portal</h1>
+            <p>Secure login for hardware testing and inventory.</p>
         </div>
 
         <?php if ($error): ?>
@@ -502,7 +493,7 @@ try {
                         <label for="username" style="margin-bottom: 0;">Username</label>
                         <button type="button" id="btn-edit-username" onclick="enableUsernameEdit()" style="display: none; background: none; border: none; color: #4f46e5; cursor: pointer; font-size: 0.85rem; font-weight: 600; padding: 0; text-transform: none;">Change</button>
                     </div>
-                    <input type="text" id="username" name="username" class="login-input" placeholder="admin" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+                    <input type="text" id="username" name="username" class="login-input" placeholder="tech" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                 </div>
                 <button type="button" id="btn-next" onclick="handleUsernameSubmit()" class="btn-login">Next ➔</button>
             </div>
@@ -517,7 +508,7 @@ try {
         </form>
 
         <div class="login-footer multi-link-container" style="position: relative;">
-            <small>&copy; <?= date('M, Y') ?> <span class="linked-text-info" style="cursor: pointer; text-decoration: underline; font-weight: bold;">System</span> | Secured Batch fulfillment</small>
+            <small>&copy; <?= date('Y') ?> <span class="linked-text-info" style="cursor: pointer; text-decoration: underline; font-weight: bold;">System</span> | Technician Operations</small>
 
             <!-- Hidden Dialog Container containing the PPP Card -->
             <div class="info-dialog" id="dialog_ppp_card" style="max-width: 600px; width: 95%; text-align: left; color: #1e293b; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.25);">
@@ -597,10 +588,6 @@ try {
     let activeSeqKey = "";
     let pendingSeqKey = "";
     let selectedRowIdx = 0;
-
-    function onManualKeyInput(val) {
-        // No error label to toggle, just validation if needed
-    }
 
     function applyManualKey() {
         const inputEl = document.getElementById('ppp_display_key');
@@ -893,7 +880,6 @@ try {
         readerDiv.style.display = 'block';
         stopBtn.style.display = 'block';
 
-        // Check for secure context
         if (!window.isSecureContext) {
             alert("Camera access requires a secure context (HTTPS or localhost). If you are accessing this site via HTTP, your mobile browser will block camera requests.");
         }
@@ -901,7 +887,6 @@ try {
         html5QrCode = new Html5Qrcode("reader");
         const qrCodeSuccessCallback = (decodedText, decodedResult) => {
             let scannedText = decodedText.trim();
-            // If it's a URL, extract the query parameters (e.g. data=HEX)
             if (scannedText.includes('data=')) {
                 try {
                     const urlParams = new URLSearchParams(scannedText.split('?')[1]);
@@ -909,23 +894,20 @@ try {
                 } catch(e) {}
             }
 
-            // Remove non-hex characters and convert to uppercase
             scannedText = scannedText.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
             if (scannedText.length === 64) {
                 document.getElementById('ppp_display_key').value = scannedText;
                 stopQRScanner();
-                applyManualKey(); // Immediately load the grid
+                applyManualKey(); 
             } else {
                 alert("Scanned text is not a valid 64-hex sequence key! Code: " + scannedText);
             }
         };
         const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-        // Query available cameras to pick the back/rear one explicitly (often fixes mobile camera selection bugs)
         Html5Qrcode.getCameras().then(devices => {
             if (devices && devices.length > 0) {
                 let cameraId = devices[0].id;
-                // Seek environment/rear/back camera
                 for (const device of devices) {
                     const label = device.label.toLowerCase();
                     if (label.includes('back') || label.includes('environment') || label.includes('rear') || label.includes('out')) {
@@ -994,7 +976,6 @@ try {
             const data = await response.json();
 
             if (data.lockout) {
-                // Show lockout error
                 let errorDiv = document.querySelector('.login-error');
                 if (!errorDiv) {
                     errorDiv = document.createElement('div');
@@ -1009,13 +990,11 @@ try {
             }
 
             if (data.honeypot) {
-                // Trigger honeypot view by reloading the page which will render the warning
                 window.location.reload();
                 return;
             }
 
             if (data.success) {
-                // Hide username next button, show password step, lock username, show edit option
                 usernameInput.readOnly = true;
                 document.getElementById('btn-edit-username').style.display = 'inline-block';
                 nextBtn.style.display = 'none';
@@ -1024,7 +1003,6 @@ try {
             }
         } catch (e) {
             console.error("Username check failed:", e);
-            // Fallback: allow them to proceed anyway to avoid locking them out on minor script errors
             usernameInput.readOnly = true;
             document.getElementById('btn-edit-username').style.display = 'inline-block';
             nextBtn.style.display = 'none';
