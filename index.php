@@ -34,7 +34,8 @@
             <a href="orders/index.php" class="module-card">
                 <div class="icon-box">📊</div>
                 <h2>Order Manager</h2>
-                <p>Comprehensive CRM, batch fulfillment, and customer registry with advanced warehouse location tracking.
+                <p>Comprehensive CRM, batch fulfillment, and customer registry with advanced warehouse location
+                    tracking.
                 </p>
                 <div class="badge badge-orders">Module Active</div>
             </a>
@@ -61,13 +62,24 @@
             <h1>Warehouse Systems</h1>
             <p class="tagline">Intelligent inventory management &amp; rapid label logistics.</p>
             <p class="description">
-                Welcome to your all-in-one workspace hub! Tailored specifically for the used laptop market, this portal is here to keep operations smooth, fast, and real-time—whether you're testing laptops and tracking parts on the tech floor, handling batch fulfillment and shelf locations for orders, or running outreach in the marketing hub. Choose a module below to jump right in.
+                Welcome to your all-in-one workspace hub! Tailored specifically for the used laptop market, this portal
+                is here to keep operations smooth, fast, and users synchronized. [Operators, Front Desk, Technicians and
+                Admins]
+            </p>
+            <p class="description">
+                Whether you're operating the <strong>Tech Center</strong> for precise hardware diagnostics, test yield
+                auditing, and live parts inventory tracking; leveraging the <strong>Orders Module</strong> for
+                AI-powered intake digitization, physical warehouse logistics, and real-time CRM synchronization; or
+                driving growth in the <strong>Marketing Hub</strong> via automated lead generation, campaign tracking,
+                and performance analytics—this integrated ecosystem unifies every aspect of our workflow.
             </p>
         </header>
     </main>
 
     <footer class="footer-note">
-        <a href="https://iqametal.com" style="color: white; text-decoration: none;" target="_blank">IQA Metal inc</a>. Inventory System &copy; <?php echo date('Y'); ?> | Powered by AI-Optimized Structural Surgery by: <a href="https://github.com/omar27522" style="color: white; text-decoration: none;" >Tenes</a>
+        <a href="https://iqametal.com" style="color: white; text-decoration: none;" target="_blank">IQA Metal inc</a>.
+        Inventory System &copy; <?php echo date('Y'); ?> | Powered by AI-Optimized Structural Surgery by: <a
+            href="https://github.com/omar27522" style="color: white; text-decoration: none;">Tenes</a>
     </footer>
 
     <!-- Global Notifications Engine -->
