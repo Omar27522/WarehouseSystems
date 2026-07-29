@@ -33,6 +33,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     exit();
 }
 
+require_once 'core/TestedMarketManager.php';
+
+// Handle Tested Market AJAX requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action'])) {
+    $action = $_GET['action'];
+    if (in_array($action, ['update_tested_market_cell', 'add_tested_market_category', 'delete_tested_market_category', 'add_tested_market_rule', 'delete_tested_market_rule'])) {
+        ob_clean();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+        $input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        try {
+            if ($action === 'update_tested_market_cell') {
+                $rule_id = (int)($input['rule_id'] ?? 0);
+                $field = $input['field'] ?? '';
+                $value = $input['value'] ?? '';
+                if ($field === 'is_2in1' && ($_SESSION['role'] ?? '') !== 'Admin') {
+                    echo json_encode(['success' => false, 'error' => 'Unauthorized: Only Admins can modify the 2-in-1 flag.']);
+                    exit();
+                }
+                if ($rule_id > 0 && !empty($field)) {
+                    TestedMarketManager::updateRuleField($rule_id, $field, $value);
+                    echo json_encode(['success' => true]);
+                    exit();
+                }
+            } elseif ($action === 'add_tested_market_category') {
+                $name = trim($input['name'] ?? '');
+                $layout = $input['layout_type'] ?? 'laptop';
+                if (!empty($name)) {
+                    $cat_id = TestedMarketManager::addCategory($name, $layout);
+                    echo json_encode(['success' => true, 'category_id' => $cat_id]);
+                    exit();
+                }
+            } elseif ($action === 'delete_tested_market_category') {
+                $cat_id = (int)($input['category_id'] ?? 0);
+                if ($cat_id > 0) {
+                    TestedMarketManager::deleteCategory($cat_id);
+                    echo json_encode(['success' => true]);
+                    exit();
+                }
+            } elseif ($action === 'add_tested_market_rule') {
+                $cat_id = (int)($input['category_id'] ?? 0);
+                if ($cat_id > 0) {
+                    $rule_id = TestedMarketManager::addRule($cat_id, $input);
+                    echo json_encode(['success' => true, 'rule_id' => $rule_id]);
+                    exit();
+                }
+            } elseif ($action === 'delete_tested_market_rule') {
+                $rule_id = (int)($input['rule_id'] ?? 0);
+                if ($rule_id > 0) {
+                    TestedMarketManager::deleteRule($rule_id);
+                    echo json_encode(['success' => true]);
+                    exit();
+                }
+            }
+            echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+            exit();
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            exit();
+        }
+    }
+}
+
 $filter = $_GET['filter'] ?? 'all';
 $date_condition = "";
 if ($filter === '30d') {
@@ -390,7 +454,8 @@ if ($is_using_mock_data) {
         <button type="button" class="tab-btn" onclick="switchTrendsTab('tab-pricing')">📊 Pricing Curves</button>
         <button type="button" class="tab-btn" onclick="switchTrendsTab('tab-cpu')">💻 CPU Generations</button>
         <button type="button" class="tab-btn" onclick="switchTrendsTab('tab-customers')">👥 Customer Insights</button>
-        <button type="button" class="tab-btn" onclick="switchTrendsTab('tab-matrix')">💵 Pricing Matrix</button>
+        <button type="button" class="tab-btn" onclick="switchTrendsTab('tab-matrix')">💵 B2B Untested</button>
+        <button type="button" class="tab-btn" onclick="switchTrendsTab('tab-tested')">🎯 Tested Market</button>
     </div>
 
     <!-- Global Flexible Search Input -->
@@ -1120,19 +1185,30 @@ if ($is_using_mock_data) {
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Tab 6: Tested Market Pricing Reference -->
+    <div id="tab-tested" class="tab-content">
+        <?php include __DIR__ . '/partials/tested_market_tab.php'; ?>
+    </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    filterActiveTable();
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('tested_cat') || urlParams.get('tab') === 'tab-tested') {
+        switchTrendsTab('tab-tested');
+    } else {
+        filterActiveTable();
+    }
 
     const searchInput = document.getElementById('trends-search');
     const clearBtn = document.getElementById('clear-search');
 
-    searchInput.addEventListener('input', () => {
-        clearBtn.style.display = searchInput.value ? 'block' : 'none';
-        filterActiveTable();
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearBtn.style.display = searchInput.value ? 'block' : 'none';
+            filterActiveTable();
+        });
+    }
 });
 
 function switchTrendsTab(tabId) {
