@@ -127,7 +127,7 @@ function downloadCSV() {
         const livePrice = priceIn ? parseFloat(priceIn.value) || 0 : 0;
         const rowTotal = liveQty * livePrice;
 
-        // Pull specific item fields directly from JS state where possible, 
+        // Pull specific item fields directly from JS state where possible,
         // falling back to DOM scraping for backwards compatibility
         const itemData = state.rawItems ? state.rawItems[rowCount] : null;
         const ram = itemData && itemData.ram ? itemData.ram : '';
@@ -143,7 +143,7 @@ function downloadCSV() {
         if (ram || storage) {
             notesVal = `${ram}/${storage}`;
         }
-        
+
         // Default type to Laptop
         const type = "Laptop";
 

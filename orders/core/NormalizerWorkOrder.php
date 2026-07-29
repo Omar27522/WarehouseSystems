@@ -39,21 +39,21 @@ class NormalizerWorkOrder
         // Extract all integers from note & desc
         preg_match_all('/\d+/', $note . ' ' . $desc, $matches);
         $numbers = array_map('intval', $matches[0]);
-        
+
         $ram = null;
         $storage = null;
-        
+
         if (count($numbers) >= 2) {
             // Take the first two numbers
             $num1 = $numbers[0];
             $num2 = $numbers[1];
-            
+
             if ($num1 >= 128) $storage = $num1;
             elseif ($num1 < 64) $ram = $num1;
-            
+
             if ($num2 >= 128) $storage = $num2;
             elseif ($num2 < 64) $ram = $num2;
-            
+
             // Fallback matching if one is still unassigned
             if ($ram === null && $storage !== null) {
                 $ram = ($num1 === $storage) ? $num2 : $num1;
@@ -74,7 +74,7 @@ class NormalizerWorkOrder
                 $storage = $num;
             }
         }
-        
+
         return ['ram' => $ram, 'storage' => $storage];
     }
 
@@ -85,16 +85,16 @@ class NormalizerWorkOrder
     {
         // 1. Remove paired formats like 8/512, 16/256, 8 / 256
         $text = preg_replace('/\b\d+\s*\/+\s*\d+\s*(?:gb|tb|mb)?\b/i', '', $text);
-        
+
         // 2. Remove formats like 8gb, 16gb
         $text = preg_replace('/\b\d+\s*gb\b/i', '', $text);
-        
+
         // 3. Remove trailing slashes like 8/, 16/
         $text = preg_replace('/\b\d+\s*\/+/i', '', $text);
-        
+
         // 4. Remove leading slashes like /128, /256
         $text = preg_replace('/\/+\s*\d+\s*(?:gb|tb|mb)?\b/i', '', $text);
-        
+
         // Clean up double spaces, double pipes, leading/trailing pipes
         $text = preg_replace('/\s+/', ' ', $text);
         $text = trim($text);
@@ -168,7 +168,7 @@ class NormalizerWorkOrder
         if (strpos($cpuLower, '6th') !== false || strpos($cpuLower, '7th') !== false) {
             return '6th-7th';
         }
-        
+
         $gen = 8;
         if (preg_match('/(\d+)th/i', $cpu, $matches)) {
             $gen = (int)$matches[1];
@@ -180,7 +180,7 @@ class NormalizerWorkOrder
         if (strpos($cpuLower, 'i3') !== false) {
             $tier = 'i3';
         }
-        
+
         $gen = max(8, min(12, $gen));
         return $tier . '-' . $gen . 'th';
     }
@@ -360,7 +360,7 @@ class NormalizerWorkOrder
         if (strtolower($itemCategory) === strtolower($requestedCategory)) {
             return true;
         }
-        
+
         // Handle 8th Gen+ i5 / i7 matches
         if ($requestedCategory === '8th Gen+ i5') {
             return (bool)preg_match('/^(8th|9th|10th|11th|12th|13th|14th) Gen i5$/i', $itemCategory);
@@ -368,7 +368,7 @@ class NormalizerWorkOrder
         if ($requestedCategory === '8th Gen+ i7') {
             return (bool)preg_match('/^(8th|9th|10th|11th|12th|13th|14th) Gen i7$/i', $itemCategory);
         }
-        
+
         return false;
     }
 
@@ -412,7 +412,7 @@ class NormalizerWorkOrder
 
         // 4. Parse RAM/Storage & construct clean description
         $specs = self::parseRamStorage($desc, $note);
-        
+
         // Strip out existing RAM/storage abbreviations from note/description to avoid redundancy
         $cleanDesc = self::cleanSpecsString($desc);
         $cleanNote = self::cleanSpecsString($note);

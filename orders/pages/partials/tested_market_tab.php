@@ -73,9 +73,9 @@ $is_admin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
         <?php foreach ($tested_categories as $cat): ?>
             <?php $is_active = ($cat['id'] == $active_cat_id); ?>
             <div style="display: inline-flex; align-items: center; gap: 4px;">
-                <button type="button" 
-                        class="tab-btn <?= $is_active ? 'active' : '' ?>" 
-                        onclick="switchTestedCategory(<?= $cat['id'] ?>)" 
+                <button type="button"
+                        class="tab-btn <?= $is_active ? 'active' : '' ?>"
+                        onclick="switchTestedCategory(<?= $cat['id'] ?>)"
                         style="padding: 8px 16px; font-size: 0.85rem; border-radius: 20px; border: 1px solid <?= $is_active ? 'var(--accent-color, #3b82f6)' : 'var(--border-color)' ?>; background: <?= $is_active ? 'var(--accent-color, #3b82f6)' : 'var(--bg-surface)' ?>; color: <?= $is_active ? '#ffffff' : 'var(--text-main)' ?>; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
                     <?= htmlspecialchars($cat['name']) ?>
                 </button>
@@ -117,7 +117,7 @@ $is_admin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
                         <tr><td colspan="7" style="text-align: center; padding: 25px; color: var(--text-secondary);">No RAM pricing rules found in this category.</td></tr>
                     <?php else: ?>
                         <?php foreach ($rules as $r): ?>
-                            <?php 
+                            <?php
                             $price = (float)$r['price'];
                             $st = (float)$r['sale_through'] * 100;
                             $qty = max(1, (int)$r['sold_count']);
@@ -150,7 +150,11 @@ $is_admin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
                                     <input type="text" class="matrix-cell-input inline-text" value="<?= htmlspecialchars($r['effective_date'] ?? '') ?>" onchange="updateTestedCell(<?= $r['id'] ?>, 'effective_date', this.value)" style="text-align: center;">
                                 </td>
                                 <td style="text-align: center;">
-                                    <button type="button" onclick="deleteTestedRule(<?= $r['id'] ?>)" title="Delete Row" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1rem;">✕</button>
+                                    <?php if ($is_admin): ?>
+                                        <button type="button" onclick="deleteTestedRule(<?= $r['id'] ?>)" title="Delete Row" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1rem;">✕</button>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-secondary); font-size: 0.85rem;">—</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -184,7 +188,7 @@ $is_admin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
                         <tr><td colspan="13" style="text-align: center; padding: 25px; color: var(--text-secondary);">No laptop pricing rules found in this category. Click "+ Add Model Row" to create one.</td></tr>
                     <?php else: ?>
                         <?php foreach ($rules as $r): ?>
-                            <?php 
+                            <?php
                             $price = (float)$r['price'];
                             $st_dec = (float)$r['sale_through'];
                             $st_pct = $st_dec * 100;
@@ -242,7 +246,11 @@ $is_admin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
                                     <input type="text" class="matrix-cell-input inline-text" value="<?= htmlspecialchars($r['effective_date'] ?? '') ?>" onchange="updateTestedCell(<?= $r['id'] ?>, 'effective_date', this.value)" style="text-align: center;">
                                 </td>
                                 <td style="text-align: center;">
-                                    <button type="button" onclick="deleteTestedRule(<?= $r['id'] ?>)" title="Delete Row" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1rem;">✕</button>
+                                    <?php if ($is_admin): ?>
+                                        <button type="button" onclick="deleteTestedRule(<?= $r['id'] ?>)" title="Delete Row" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1rem;">✕</button>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-secondary); font-size: 0.85rem;">—</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -390,7 +398,9 @@ function updateTestedCell(ruleId, field, value) {
 }
 
 function openAddCategoryModal() {
-    document.getElementById('add-tested-cat-modal').style.display = 'flex';
+    const modal = document.getElementById('add-tested-cat-modal');
+    if (typeof bringModalToFront === 'function') bringModalToFront(modal);
+    modal.style.display = 'flex';
 }
 function closeAddCategoryModal() {
     document.getElementById('add-tested-cat-modal').style.display = 'none';
@@ -436,7 +446,9 @@ function deleteTestedCategory(catId, catName) {
 }
 
 function openAddRuleModal() {
-    document.getElementById('add-tested-rule-modal').style.display = 'flex';
+    const modal = document.getElementById('add-tested-rule-modal');
+    if (typeof bringModalToFront === 'function') bringModalToFront(modal);
+    modal.style.display = 'flex';
 }
 function closeAddRuleModal() {
     document.getElementById('add-tested-rule-modal').style.display = 'none';
@@ -448,7 +460,7 @@ function submitAddRule(e) {
     const formData = new FormData(form);
     const payload = {};
     formData.forEach((val, key) => payload[key] = val);
-    
+
     // convert sale_through percentage input to decimal
     if (payload.sale_through) {
         payload.sale_through = (parseFloat(payload.sale_through) || 0) / 100.0;

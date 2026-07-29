@@ -35,13 +35,13 @@ const woGrid = {
         const checkboxes = document.querySelectorAll('.wo-row-select');
         checkboxes.forEach(cb => cb.checked = master.checked);
     },
-    
+
     handlePriceChange(input) {
         // Remove the suggested price styling and tag once the user touches it
         input.style.fontStyle = 'normal';
         input.style.color = '';
         input.style.fontWeight = 'bold';
-        
+
         const badge = input.parentNode.querySelector('.suggested-price-badge');
         if (badge) {
             badge.style.display = 'none';
@@ -132,7 +132,7 @@ async function handleWorkOrderFile(file) {
     if (viewerContainer) {
         viewerContainer.innerHTML = '';
         woViewer.reset();
-        
+
         const fileUrl = URL.createObjectURL(file);
         if (file.type === 'application/pdf') {
             const iframe = document.createElement('iframe');

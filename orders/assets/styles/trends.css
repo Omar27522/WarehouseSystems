@@ -255,11 +255,11 @@
         align-items: stretch;
         gap: 12px;
     }
-    
+
     .trends-header > div {
         width: 100%;
     }
-    
+
     #trends-filter {
         width: 100%;
     }
@@ -272,7 +272,7 @@
         width: 100%;
         scrollbar-width: none;
     }
-    
+
     .tab-nav::-webkit-scrollbar {
         display: none;
     }
@@ -287,7 +287,7 @@
         -webkit-overflow-scrolling: touch;
         gap: 12px;
     }
-    
+
     .bar-container {
         min-width: 45px;
     }
@@ -297,7 +297,7 @@
     .trends-grid {
         grid-template-columns: 1fr !important;
     }
-    
+
     #widget-board {
         grid-template-columns: 1fr !important;
     }
