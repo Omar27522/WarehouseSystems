@@ -1,4 +1,4 @@
-# 🤖 AI Agent Context & Guidelines 7/17/2026 1:35 PM
+# 🤖 AI Agent Context & Guidelines 9/5/2026 10:52 PM
 
 Welcome! This document provides the architectural and styling patterns for the **IQA Warehouse Systems** codebase. By adhering to these guidelines, you will write cleaner, more maintainable code and avoid redundant investigations that waste tokens.
 

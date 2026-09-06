@@ -1,4 +1,4 @@
-# 🗺️ Global System Sitemap 7/17/2026 1:35 PM
+# 🗺️ Global System Sitemap 9/5/2026 10:52 PM
 
 This document outlines the file layout and component structure of the **IQA Warehouse Systems** workspace.
 
